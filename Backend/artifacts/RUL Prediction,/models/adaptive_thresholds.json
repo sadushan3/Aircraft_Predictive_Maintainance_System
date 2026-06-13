@@ -1,0 +1,7 @@
+{
+  "residual_z_threshold": 3.0,
+  "n_feedback": 40,
+  "n_rejected": 0,
+  "n_accepted": 40,
+  "reason": "adapted from feedback"
+}
