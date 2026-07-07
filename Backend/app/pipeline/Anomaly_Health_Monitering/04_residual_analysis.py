@@ -10,7 +10,16 @@ data/outputs/residuals.csv
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/04_residual_analysis.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.digital_twin.residual_calculator import ResidualCalculator
@@ -30,6 +39,7 @@ class ResidualAnalysisPipeline:
         """
         Initialize residual analysis pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/04_residual_analysis.py::__init__")
         Config.create_directories()
 
     def run(self) -> Dict[str, object]:
@@ -39,6 +49,7 @@ class ResidualAnalysisPipeline:
         Returns:
             Dict[str, object]: Pipeline result.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/04_residual_analysis.py::run")
         try:
             completed: List[Dict[str, object]] = []
             failed: List[Dict[str, object]] = []
@@ -82,6 +93,7 @@ def run_residual_analysis_pipeline() -> Dict[str, object]:
     Returns:
         Dict[str, object]: Pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/04_residual_analysis.py::run_residual_analysis_pipeline")
     pipeline = ResidualAnalysisPipeline()
     return pipeline.run()
 
