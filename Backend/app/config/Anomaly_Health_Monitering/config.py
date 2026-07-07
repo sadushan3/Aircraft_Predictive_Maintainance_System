@@ -1,9 +1,3 @@
-
----
-
-## `app/config/Config.py`
-
-```python
 """
 Central configuration for CA-EDT-AHMA.
 
@@ -33,12 +27,12 @@ class Config:
         "and Anomaly Reasoning"
     )
 
-    BASE_DIR: Path = Path(__file__).resolve().parents[2]
+    BASE_DIR: Path = Path(__file__).resolve().parents[3]
 
     DATA_DIR: Path = BASE_DIR / "data"
-    RAW_DATA_DIR: Path = DATA_DIR / "raw"
-    PROCESSED_DATA_DIR: Path = DATA_DIR / "processed"
-    OUTPUT_DIR: Path = DATA_DIR / "outputs"
+    RAW_DATA_DIR: Path = DATA_DIR / "Anomaly_Health_Monitering"
+    PROCESSED_DATA_DIR: Path = BASE_DIR / "processed"
+    OUTPUT_DIR: Path = BASE_DIR / "outputs" / "Anomaly_Health_Monitering"
 
     MODEL_DIR: Path = BASE_DIR / "models"
     CONTEXT_MODEL_DIR: Path = MODEL_DIR / "context"
