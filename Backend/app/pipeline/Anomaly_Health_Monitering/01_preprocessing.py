@@ -14,7 +14,16 @@ Y_dev and Y_test are ignored.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/01_preprocessing.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.Data_Preprocessing.cleaner import DataCleaner
@@ -38,6 +47,7 @@ class PreprocessingPipeline:
         """
         Initialize preprocessing pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/01_preprocessing.py::__init__")
         Config.create_directories()
 
     def run(self, include_sequences: bool = False) -> Dict[str, object]:
@@ -50,6 +60,7 @@ class PreprocessingPipeline:
         Returns:
             Dict[str, object]: Pipeline result.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/01_preprocessing.py::run")
         try:
             stages = [
                 ("data_loading", DataLoader().save_raw_data),
@@ -105,6 +116,7 @@ def run_preprocessing_pipeline(include_sequences: bool = False) -> Dict[str, obj
     Returns:
         Dict[str, object]: Pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/01_preprocessing.py::run_preprocessing_pipeline")
     pipeline = PreprocessingPipeline()
     return pipeline.run(include_sequences=include_sequences)
 
