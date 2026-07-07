@@ -14,7 +14,16 @@ Test split is used only for prediction/scoring.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/02_context_modeling.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.context_modeling.context_drift import ContextDriftDetector
@@ -37,6 +46,7 @@ class ContextModelingPipeline:
         """
         Initialize context modeling pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/02_context_modeling.py::__init__")
         Config.create_directories()
 
     def run(self, include_drift: bool = True) -> Dict[str, object]:
@@ -49,6 +59,7 @@ class ContextModelingPipeline:
         Returns:
             Dict[str, object]: Pipeline result.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/02_context_modeling.py::run")
         try:
             stages = [
                 ("operating_mode_detection", OperatingModeDetector().run),
@@ -101,6 +112,7 @@ def run_context_modeling_pipeline(include_drift: bool = True) -> Dict[str, objec
     Returns:
         Dict[str, object]: Pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/02_context_modeling.py::run_context_modeling_pipeline")
     pipeline = ContextModelingPipeline()
     return pipeline.run(include_drift=include_drift)
 
