@@ -15,7 +15,16 @@ Test split is used only for inference/evaluation.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/03_digital_twin.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.digital_twin.ensemble_twin import EnsembleDigitalTwin
@@ -39,6 +48,7 @@ class DigitalTwinPipeline:
         """
         Initialize digital twin pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/03_digital_twin.py::__init__")
         Config.create_directories()
 
     def run(self, include_comparison: bool = True) -> Dict[str, object]:
@@ -51,6 +61,7 @@ class DigitalTwinPipeline:
         Returns:
             Dict[str, object]: Pipeline result.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/03_digital_twin.py::run")
         try:
             stages = [
                 ("random_forest_twin", RandomForestTwin().run),
@@ -110,6 +121,7 @@ def run_digital_twin_pipeline(include_comparison: bool = True) -> Dict[str, obje
     Returns:
         Dict[str, object]: Pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/03_digital_twin.py::run_digital_twin_pipeline")
     pipeline = DigitalTwinPipeline()
     return pipeline.run(include_comparison=include_comparison)
 
