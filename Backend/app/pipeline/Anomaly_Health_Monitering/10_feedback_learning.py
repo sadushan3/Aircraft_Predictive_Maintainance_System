@@ -14,7 +14,16 @@ models/feedback/adaptive_thresholds.json
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/10_feedback_learning.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.feedback.alert_memory import AlertMemory
@@ -36,6 +45,7 @@ class FeedbackLearningPipeline:
         """
         Initialize feedback learning pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/10_feedback_learning.py::__init__")
         Config.create_directories()
 
     def run(self) -> Dict[str, object]:
@@ -45,6 +55,7 @@ class FeedbackLearningPipeline:
         Returns:
             Dict[str, object]: Pipeline result.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/10_feedback_learning.py::run")
         try:
             stages = [
                 ("feedback_store", FeedbackStore().run),
@@ -101,6 +112,7 @@ def run_feedback_learning_pipeline() -> Dict[str, object]:
     Returns:
         Dict[str, object]: Pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/10_feedback_learning.py::run_feedback_learning_pipeline")
     pipeline = FeedbackLearningPipeline()
     return pipeline.run()
 
