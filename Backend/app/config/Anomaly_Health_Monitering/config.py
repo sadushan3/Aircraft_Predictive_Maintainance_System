@@ -8,9 +8,17 @@ and Anomaly Reasoning.
 Important:
 TensorFlow is a library/framework, not the model name.
 
-Main neural models:
-1. MLP Digital Twin Regressor implemented using TensorFlow/Keras.
-2. Residual Autoencoder Anomaly Detector implemented using TensorFlow/Keras.
+Main digital twin models:
+1. Random Forest Regressor implemented using scikit-learn.
+2. XGBoost Regressor implemented using XGBoost.
+3. LightGBM Regressor implemented using LightGBM.
+4. MLP Digital Twin Regressor implemented using TensorFlow/Keras.
+
+Final active digital twin:
+- 4-model weighted Ensemble Digital Twin.
+
+Main anomaly model:
+- Residual Autoencoder Anomaly Detector implemented using TensorFlow/Keras.
 """
 
 from __future__ import annotations
@@ -78,41 +86,66 @@ class Config:
     CONTEXT_DRIFT_CSV: Path = OUTPUT_DIR / "context_drift.csv"
 
     # ==================================================================================
-    # Classical digital twin paths kept for compatibility
+    # Digital twin prediction outputs
     # ==================================================================================
 
     RF_PREDICTIONS_CSV: Path = OUTPUT_DIR / "rf_predictions.csv"
     XGB_PREDICTIONS_CSV: Path = OUTPUT_DIR / "xgb_predictions.csv"
     LGBM_PREDICTIONS_CSV: Path = OUTPUT_DIR / "lgbm_predictions.csv"
+    MLP_TWIN_PREDICTIONS_CSV: Path = OUTPUT_DIR / "mlp_twin_predictions.csv"
+
     ENSEMBLE_PREDICTIONS_CSV: Path = OUTPUT_DIR / "ensemble_predictions.csv"
 
-    RF_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "random_forest_twin.pkl"
-    XGB_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "xgboost_twin.pkl"
-    LGBM_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "lightgbm_twin.pkl"
-    ENSEMBLE_WEIGHTS_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "ensemble_weights.json"
+    # Backward-compatible TensorFlow prediction alias
+    TF_PREDICTIONS_CSV: Path = MLP_TWIN_PREDICTIONS_CSV
 
     # ==================================================================================
-    # MLP Digital Twin implemented using TensorFlow/Keras - PRIMARY
+    # Digital twin model paths
     # ==================================================================================
+
+    RF_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "random_forest_twin.pkl"
+    RF_MODEL_METADATA_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "random_forest_twin_metadata.json"
+
+    XGB_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "xgboost_twin.pkl"
+    XGB_MODEL_METADATA_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "xgboost_twin_metadata.json"
+
+    LGBM_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "lightgbm_twin.pkl"
+    LGBM_MODEL_METADATA_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "lightgbm_twin_metadata.json"
 
     MLP_TWIN_MODEL_NAME: str = "mlp_digital_twin_regressor"
     MLP_TWIN_LIBRARY: str = "TensorFlow/Keras"
-
     MLP_TWIN_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "mlp_digital_twin.keras"
     MLP_TWIN_METADATA_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "mlp_digital_twin_metadata.json"
-    MLP_TWIN_PREDICTIONS_CSV: Path = OUTPUT_DIR / "mlp_twin_predictions.csv"
     MLP_TWIN_METRICS_CSV: Path = METRIC_DIR / "mlp_digital_twin_metrics.csv"
 
-    # Backward-compatible aliases for files already written as tensorflow_twin.py
+    # Backward-compatible TensorFlow aliases
     TF_MODEL_PATH: Path = MLP_TWIN_MODEL_PATH
     TF_MODEL_METADATA_PATH: Path = MLP_TWIN_METADATA_PATH
-    TF_PREDICTIONS_CSV: Path = MLP_TWIN_PREDICTIONS_CSV
     TF_METRICS_CSV: Path = MLP_TWIN_METRICS_CSV
 
-    ACTIVE_DIGITAL_TWIN_MODEL_NAME: str = MLP_TWIN_MODEL_NAME
-    ACTIVE_DIGITAL_TWIN_LIBRARY: str = MLP_TWIN_LIBRARY
-    ACTIVE_DIGITAL_TWIN_PREDICTIONS_CSV: Path = MLP_TWIN_PREDICTIONS_CSV
-    ACTIVE_DIGITAL_TWIN_PREDICTION_PREFIX: str = "tf_predicted_"
+    # ==================================================================================
+    # 4-model Ensemble Digital Twin - ACTIVE digital twin
+    # ==================================================================================
+
+    ENSEMBLE_MODEL_NAME: str = "four_model_weighted_ensemble_digital_twin"
+    ENSEMBLE_LIBRARY: str = "scikit-learn + XGBoost + LightGBM + TensorFlow/Keras"
+
+    ENSEMBLE_MEMBERS: Tuple[str, ...] = (
+        "random_forest",
+        "xgboost",
+        "lightgbm",
+        "mlp_digital_twin",
+    )
+
+    ENSEMBLE_WEIGHTS_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "ensemble_weights.json"
+    ENSEMBLE_METADATA_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "ensemble_metadata.json"
+    ENSEMBLE_METRICS_CSV: Path = METRIC_DIR / "ensemble_digital_twin_metrics.csv"
+    ENSEMBLE_CHUNK_SIZE: int = 25_000
+
+    ACTIVE_DIGITAL_TWIN_MODEL_NAME: str = ENSEMBLE_MODEL_NAME
+    ACTIVE_DIGITAL_TWIN_LIBRARY: str = ENSEMBLE_LIBRARY
+    ACTIVE_DIGITAL_TWIN_PREDICTIONS_CSV: Path = ENSEMBLE_PREDICTIONS_CSV
+    ACTIVE_DIGITAL_TWIN_PREDICTION_PREFIX: str = "ensemble_predicted_"
 
     # ==================================================================================
     # Residual and anomaly outputs
@@ -262,8 +295,19 @@ class Config:
     }
 
     # ==================================================================================
-    # Classical model parameters kept for backup/comparison
+    # Random Forest full-dev memory-safe training parameters
     # ==================================================================================
+
+    RF_TRAIN_CHUNK_SIZE: int = 50_000
+    RF_PREDICTION_BATCH_SIZE: int = 50_000
+
+    # Requested setting:
+    RF_TRAIN_N_JOBS: int = 2
+
+    RF_VERBOSE: int = 2
+    RF_REBUILD_MEMMAP: bool = True
+    RF_CLEANUP_MEMMAP_AFTER_TRAINING: bool = False
+    RF_TRAIN_MEMMAP_DIR: Path = DIGITAL_TWIN_MODEL_DIR / "rf_full_dev_memmap"
 
     RF_PARAMS: Dict[str, int | float | bool | None] = {
         "n_estimators": 120,
@@ -271,8 +315,15 @@ class Config:
         "min_samples_split": 5,
         "min_samples_leaf": 2,
         "random_state": RANDOM_SEED,
-        "n_jobs": -1,
+
+        # This is also set to 2 for consistency.
+        # random_forest_twin.py can still override this with RF_TRAIN_N_JOBS.
+        "n_jobs": RF_TRAIN_N_JOBS,
     }
+
+    # ==================================================================================
+    # XGBoost and LightGBM parameters
+    # ==================================================================================
 
     XGB_PARAMS: Dict[str, int | float | str] = {
         "n_estimators": 180,
@@ -463,6 +514,7 @@ class Config:
             cls.METRIC_DIR,
             cls.EXPERIMENT_DIR,
             cls.MLRUNS_DIR,
+            cls.RF_TRAIN_MEMMAP_DIR,
         ]
 
         for directory in directories:
@@ -471,10 +523,23 @@ class Config:
 
 if __name__ == "__main__":
     Config.create_directories()
+
     print(f"{Config.PROJECT_NAME} directory structure initialized at: {Config.BASE_DIR}")
+
+    print(f"RF train n_jobs: {Config.RF_TRAIN_N_JOBS}")
+    print(f"RF memmap directory: {Config.RF_TRAIN_MEMMAP_DIR}")
+    print(f"RF model path: {Config.RF_MODEL_PATH}")
+    print(f"RF metadata path: {Config.RF_MODEL_METADATA_PATH}")
+    print(f"RF predictions: {Config.RF_PREDICTIONS_CSV}")
+
+    print(f"MLP model path: {Config.MLP_TWIN_MODEL_PATH}")
+    print(f"MLP predictions: {Config.MLP_TWIN_PREDICTIONS_CSV}")
+
     print(f"Active digital twin model: {Config.ACTIVE_DIGITAL_TWIN_MODEL_NAME}")
     print(f"Active digital twin library: {Config.ACTIVE_DIGITAL_TWIN_LIBRARY}")
     print(f"Active digital twin predictions: {Config.ACTIVE_DIGITAL_TWIN_PREDICTIONS_CSV}")
+    print(f"Active digital twin prefix: {Config.ACTIVE_DIGITAL_TWIN_PREDICTION_PREFIX}")
+
     print(f"Active anomaly model: {Config.ACTIVE_ANOMALY_MODEL_NAME}")
     print(f"Active anomaly library: {Config.ACTIVE_ANOMALY_LIBRARY}")
     print(f"Active anomaly scores: {Config.ACTIVE_ANOMALY_SCORE_CSV}")
