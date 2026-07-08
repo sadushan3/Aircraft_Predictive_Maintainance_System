@@ -12,7 +12,16 @@ SHAP can be computationally expensive on large files, so it can be disabled.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/08_explainability.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.explainability.explanation_generator import (
@@ -41,6 +50,7 @@ class ExplainabilityPipeline:
         """
         Initialize explainability pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/08_explainability.py::__init__")
         Config.create_directories()
 
     def run(self, include_shap: bool = False) -> Dict[str, object]:
@@ -53,6 +63,7 @@ class ExplainabilityPipeline:
         Returns:
             Dict[str, object]: Pipeline result.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/08_explainability.py::run")
         try:
             stages = [
                 ("sensor_residual_ranking", SensorResidualRanking().run),
@@ -112,6 +123,7 @@ def run_explainability_pipeline(include_shap: bool = False) -> Dict[str, object]
     Returns:
         Dict[str, object]: Pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/08_explainability.py::run_explainability_pipeline")
     pipeline = ExplainabilityPipeline()
     return pipeline.run(include_shap=include_shap)
 
