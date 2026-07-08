@@ -31,12 +31,21 @@ classes directly and uses importlib for full pipeline loading.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/routers/Anomaly_Health_Monitering/Routes.py")
 import importlib
 import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, File, UploadFile
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.schemas.Anomaly_Health_Monitering.anomaly_schema import FeedbackRequest
@@ -156,6 +165,7 @@ def _api_response_from_dict(result: Dict[str, Any]) -> APIResponse:
     Returns:
         APIResponse: Standard API response.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::_api_response_from_dict")
     return APIResponse(
         status=str(result.get("status", "success")),
         message=str(result.get("message", "")),
@@ -182,6 +192,7 @@ def _failed_response(message: str, exc: Exception) -> APIResponse:
     Returns:
         APIResponse: Failed response.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::_failed_response")
     logger.exception(message)
     return APIResponse(
         status="failed",
@@ -200,6 +211,7 @@ def _stage_result_to_dict(stage_result: StageResult) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Dictionary result.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::_stage_result_to_dict")
     return {
         "status": stage_result.status,
         "message": stage_result.message,
@@ -215,8 +227,9 @@ async def upload_dataset(file: UploadFile = File(...)) -> APIResponse:
     Upload the N-CMAPSS HDF5 file.
 
     The uploaded file is saved as:
-    app/data/raw/N-CMAPSS_DS01-005.h5
+    Backend/data/Anomaly_Health_Monitering/N-CMAPSS_DS01-005.h5
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::upload_dataset")
     try:
         Config.create_directories()
 
@@ -260,6 +273,7 @@ def preprocess() -> APIResponse:
     3. Engineer features
     4. Scale features with dev-only fitting
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::preprocess")
     try:
         stages = [
             ("data_loading", DataLoader().save_raw_data),
@@ -312,6 +326,7 @@ def context_modeling() -> APIResponse:
     Inference:
     dev and test.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::context_modeling")
     try:
         stages = [
             ("operating_mode_detection", OperatingModeDetector().run),
@@ -366,6 +381,7 @@ def train_digital_twin() -> APIResponse:
     Target:
     X_s measured sensor values.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::train_digital_twin")
     try:
         stages = [
             ("random_forest_twin", RandomForestTwin().run),
@@ -418,6 +434,7 @@ def generate_residuals() -> APIResponse:
     Generate residuals:
     actual X_s - ensemble predicted X_s.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::generate_residuals")
     try:
         result = ResidualCalculator().run()
         return _api_response_from_dict(result)
@@ -437,6 +454,7 @@ def detect_anomalies() -> APIResponse:
     5. Severity classification
     6. Early warning score
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::detect_anomalies")
     try:
         stages = [
             ("residual_anomaly_detector", ResidualAnomalyDetector().run),
@@ -494,6 +512,7 @@ def generate_health_index() -> APIResponse:
 
     This endpoint does not predict RUL.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::generate_health_index")
     try:
         result = HealthIndexCalculator().run()
         return _api_response_from_dict(result)
@@ -513,6 +532,7 @@ def generate_health_score() -> APIResponse:
     - health trend
     - health alerts
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::generate_health_score")
     try:
         stages = [
             ("health_index", HealthIndexCalculator().run),
@@ -565,6 +585,7 @@ def classify_health_state() -> APIResponse:
     Classify health state:
     Healthy, Degrading, Warning, Critical.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::classify_health_state")
     try:
         result = HealthStateClassifier().run()
         return _api_response_from_dict(result)
@@ -582,6 +603,7 @@ def root_cause_analysis() -> APIResponse:
     3. Root-cause pattern inference
     4. Temporal reasoning
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::root_cause_analysis")
     try:
         stages = [
             ("sensor_dependency_graph", SensorDependencyGraph().run),
@@ -634,6 +656,7 @@ def explain() -> APIResponse:
     2. Subsystem explanation
     3. Human-readable explanation reports
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::explain")
     try:
         stages = [
             ("sensor_residual_ranking", SensorResidualRanking().run),
@@ -682,6 +705,7 @@ def confidence() -> APIResponse:
     """
     Generate model agreement, confidence, reliability, and uncertainty scores.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::confidence")
     try:
         stages = [
             ("model_agreement", ModelAgreementCalculator().run),
@@ -737,6 +761,7 @@ def feedback(request: FeedbackRequest) -> APIResponse:
     - missed_anomaly
     - uncertain
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::feedback")
     try:
         result = LearningUpdater().submit_feedback(
             unit_id=request.unit_id,
@@ -759,6 +784,7 @@ def dashboard() -> APIResponse:
     """
     Generate dashboard_data.csv.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard")
     try:
         result = DashboardDataGenerator().run()
         return _api_response_from_dict(result)
@@ -772,6 +798,7 @@ def dashboard_summary() -> APIResponse:
     """
     Return dashboard summary counts.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_summary")
     try:
         result = DashboardAPI().get_summary()
         return _api_response_from_dict(result)
@@ -785,6 +812,7 @@ def dashboard_latest_all() -> APIResponse:
     """
     Return latest health for all units.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_latest_all")
     try:
         result = DashboardAPI().get_latest_all_units()
         return _api_response_from_dict(result)
@@ -798,6 +826,7 @@ def dashboard_latest_unit(request: UnitRequest) -> APIResponse:
     """
     Return latest health for one unit.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_latest_unit")
     try:
         result = DashboardAPI().get_latest_unit_health(request.unit_id)
         return _api_response_from_dict(result)
@@ -811,6 +840,7 @@ def dashboard_health_trend(request: UnitRequest) -> APIResponse:
     """
     Return health trend for one unit.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_health_trend")
     try:
         result = DashboardAPI().get_health_trend(request.unit_id)
         return _api_response_from_dict(result)
@@ -824,6 +854,7 @@ def dashboard_anomalies(request: UnitRequest) -> APIResponse:
     """
     Return anomalies for one unit.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_anomalies")
     try:
         result = DashboardAPI().get_anomalies(request.unit_id)
         return _api_response_from_dict(result)
@@ -837,6 +868,7 @@ def dashboard_explanation(request: UnitCycleRequest) -> APIResponse:
     """
     Return explanation for one unit and cycle.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_explanation")
     try:
         result = DashboardAPI().get_explanation(
             unit_id=request.unit_id,
@@ -853,6 +885,7 @@ def dashboard_confidence(request: UnitRequest) -> APIResponse:
     """
     Return confidence and uncertainty trend for one unit.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_confidence")
     try:
         result = DashboardAPI().get_confidence_uncertainty(request.unit_id)
         return _api_response_from_dict(result)
@@ -872,6 +905,7 @@ def evaluate() -> APIResponse:
     - reasoning
     - explainability
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::evaluate")
     try:
         stages = [
             ("evaluate_digital_twin", DigitalTwinEvaluator().run),
@@ -922,9 +956,10 @@ def full_pipeline(include_shap: bool = False) -> APIResponse:
 
     If one stage fails, previously generated files are not deleted.
     """
+    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::full_pipeline")
     try:
         module = importlib.import_module(
-            "app.services.Anomaly_Health_Monitoring.pipeline.11_full_pipeline"
+            "app.pipeline.Anomaly_Health_Monitering.11_full_pipeline"
         )
         run_full_pipeline = getattr(module, "run_full_pipeline")
         result: Dict[str, Any] = run_full_pipeline(include_shap=include_shap)
