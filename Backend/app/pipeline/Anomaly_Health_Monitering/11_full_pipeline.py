@@ -22,7 +22,16 @@ Previously generated CSV files, models, reports, and metrics are not deleted.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/11_full_pipeline.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.Data_Preprocessing.cleaner import DataCleaner
@@ -102,6 +111,7 @@ class FullPipeline:
         """
         Initialize full pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/11_full_pipeline.py::__init__")
         Config.create_directories()
 
     def run(self, include_shap: bool = False) -> Dict[str, object]:
@@ -114,66 +124,67 @@ class FullPipeline:
         Returns:
             Dict[str, object]: Full pipeline summary.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/11_full_pipeline.py::run")
         try:
             stages = [
-                ("01_data_loading", DataLoader().save_raw_data),
-                ("02_cleaning", DataCleaner().run),
-                ("03_feature_engineering", FeatureEngineer().run),
-                ("04_dev_only_scaling", FeatureScaler().run),
+                ("01_data_loading", lambda: DataLoader().save_raw_data()),
+                ("02_cleaning", lambda: DataCleaner().run()),
+                ("03_feature_engineering", lambda: FeatureEngineer().run()),
+                ("04_dev_only_scaling", lambda: FeatureScaler().run()),
 
-                ("05_context_modeling", OperatingModeDetector().run),
-                ("06_context_drift", ContextDriftDetector().run),
+                ("05_context_modeling", lambda: OperatingModeDetector().run()),
+                ("06_context_drift", lambda: ContextDriftDetector().run()),
 
-                ("07_random_forest_twin", RandomForestTwin().run),
-                ("08_xgboost_twin", XGBoostTwin().run),
-                ("09_lightgbm_twin", LightGBMTwin().run),
-                ("10_ensemble_twin", EnsembleDigitalTwin().run),
-                ("11_twin_comparison", TwinComparator().run),
+                ("07_random_forest_twin", lambda: RandomForestTwin().run()),
+                ("08_xgboost_twin", lambda: XGBoostTwin().run()),
+                ("09_lightgbm_twin", lambda: LightGBMTwin().run()),
+                ("10_ensemble_twin", lambda: EnsembleDigitalTwin().run()),
+                ("11_twin_comparison", lambda: TwinComparator().run()),
 
-                ("12_residual_analysis", ResidualCalculator().run),
+                ("12_residual_analysis", lambda: ResidualCalculator().run()),
 
-                ("13_residual_anomaly_detector", ResidualAnomalyDetector().run),
-                ("14_isolation_forest_detector", IsolationForestDetector().run),
-                ("15_mahalanobis_detector", MahalanobisDetector().run),
-                ("16_anomaly_fusion", AnomalyFusion().run),
-                ("17_severity_classifier", SeverityClassifier().run),
-                ("18_early_warning_score", EarlyWarningScore().run),
+                ("13_residual_anomaly_detector", lambda: ResidualAnomalyDetector().run()),
+                ("14_isolation_forest_detector", lambda: IsolationForestDetector().run()),
+                ("15_mahalanobis_detector", lambda: MahalanobisDetector().run()),
+                ("16_anomaly_fusion", lambda: AnomalyFusion().run()),
+                ("17_severity_classifier", lambda: SeverityClassifier().run()),
+                ("18_early_warning_score", lambda: EarlyWarningScore().run()),
 
-                ("19_health_index", HealthIndexCalculator().run),
-                ("20_health_state", HealthStateClassifier().run),
-                ("21_health_trend", HealthTrendTracker().run),
-                ("22_health_alerts", HealthAlertEngine().run),
+                ("19_health_index", lambda: HealthIndexCalculator().run()),
+                ("20_health_state", lambda: HealthStateClassifier().run()),
+                ("21_health_trend", lambda: HealthTrendTracker().run()),
+                ("22_health_alerts", lambda: HealthAlertEngine().run()),
 
-                ("23_sensor_dependency_graph", SensorDependencyGraph().run),
-                ("24_root_cause_analysis", RootCauseAnalyzer().run),
-                ("25_root_cause_tracking", RootCauseTracker().run),
-                ("26_temporal_reasoning", TemporalReasoning().run),
+                ("23_sensor_dependency_graph", lambda: SensorDependencyGraph().run()),
+                ("24_root_cause_analysis", lambda: RootCauseAnalyzer().run()),
+                ("25_root_cause_tracking", lambda: RootCauseTracker().run()),
+                ("26_temporal_reasoning", lambda: TemporalReasoning().run()),
 
-                ("27_model_agreement", ModelAgreementCalculator().run),
-                ("28_confidence_estimation", ConfidenceEstimator().run),
+                ("27_model_agreement", lambda: ModelAgreementCalculator().run()),
+                ("28_confidence_estimation", lambda: ConfidenceEstimator().run()),
 
-                ("29_sensor_residual_ranking", SensorResidualRanking().run),
-                ("30_subsystem_explainer", SubsystemExplainer().run),
-                ("31_explanation_generator", ExplanationGenerator().run),
+                ("29_sensor_residual_ranking", lambda: SensorResidualRanking().run()),
+                ("30_subsystem_explainer", lambda: SubsystemExplainer().run()),
+                ("31_explanation_generator", lambda: ExplanationGenerator().run()),
 
-                ("32_feedback_store", FeedbackStore().run),
-                ("33_alert_memory", AlertMemory().run),
-                ("34_threshold_adapter", ThresholdAdapter().run),
+                ("32_feedback_store", lambda: FeedbackStore().run()),
+                ("33_alert_memory", lambda: AlertMemory().run()),
+                ("34_threshold_adapter", lambda: ThresholdAdapter().run()),
 
-                ("35_dashboard_data_generation", DashboardDataGenerator().run),
+                ("35_dashboard_data_generation", lambda: DashboardDataGenerator().run()),
 
-                ("36_evaluate_digital_twin", DigitalTwinEvaluator().run),
-                ("37_evaluate_context", ContextEvaluator().run),
-                ("38_evaluate_anomaly", AnomalyEvaluator().run),
-                ("39_evaluate_health", HealthEvaluator().run),
-                ("40_evaluate_reasoning", ReasoningEvaluator().run),
-                ("41_evaluate_explainability", ExplainabilityEvaluator().run),
+                ("36_evaluate_digital_twin", lambda: DigitalTwinEvaluator().run()),
+                ("37_evaluate_context", lambda: ContextEvaluator().run()),
+                ("38_evaluate_anomaly", lambda: AnomalyEvaluator().run()),
+                ("39_evaluate_health", lambda: HealthEvaluator().run()),
+                ("40_evaluate_reasoning", lambda: ReasoningEvaluator().run()),
+                ("41_evaluate_explainability", lambda: ExplainabilityEvaluator().run()),
             ]
 
             if include_shap:
                 from app.services.Anomaly_Health_Monitering.explainability.shap_explainer import SHAPExplainer
 
-                stages.insert(31, ("31a_shap_explainer", SHAPExplainer().run))
+                stages.insert(31, ("31a_shap_explainer", lambda: SHAPExplainer().run()))
 
             completed: List[Dict[str, object]] = []
             failed: List[Dict[str, object]] = []
@@ -234,6 +245,7 @@ def run_full_pipeline(include_shap: bool = False) -> Dict[str, object]:
     Returns:
         Dict[str, object]: Full pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/11_full_pipeline.py::run_full_pipeline")
     pipeline = FullPipeline()
     return pipeline.run(include_shap=include_shap)
 
