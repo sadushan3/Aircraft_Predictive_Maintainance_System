@@ -16,7 +16,16 @@ Test split is score/inference only.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/pipeline/Anomaly_Health_Monitering/05_anomaly_detection.py")
 from typing import Dict, List
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.config.Anomaly_Health_Monitering.Config import Config
 from app.services.Anomaly_Health_Monitering.anomaly_detection.anomaly_fusion import AnomalyFusion
@@ -45,6 +54,7 @@ class AnomalyDetectionPipeline:
         """
         Initialize anomaly detection pipeline.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/05_anomaly_detection.py::__init__")
         Config.create_directories()
 
     def run(self) -> Dict[str, object]:
@@ -54,6 +64,7 @@ class AnomalyDetectionPipeline:
         Returns:
             Dict[str, object]: Pipeline result.
         """
+        print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/05_anomaly_detection.py::run")
         try:
             stages = [
                 ("residual_anomaly_detector", ResidualAnomalyDetector().run),
@@ -109,6 +120,7 @@ def run_anomaly_detection_pipeline() -> Dict[str, object]:
     Returns:
         Dict[str, object]: Pipeline result.
     """
+    print("[PROGRESS] Entering Backend/app/pipeline/Anomaly_Health_Monitering/05_anomaly_detection.py::run_anomaly_detection_pipeline")
     pipeline = AnomalyDetectionPipeline()
     return pipeline.run()
 
