@@ -4,9 +4,18 @@ Common Pydantic schemas for CA-EDT-AHMA API responses and requests.
 
 from __future__ import annotations
 
+print("[PROGRESS] Loaded Backend/app/schemas/Anomaly_Health_Monitering/Common schemas.py")
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
+
+import os as _os
+import sys as _sys
+
+if __package__ in {None, ""}:
+    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
+    if _backend_root not in _sys.path:
+        _sys.path.append(_backend_root)
 
 from app.utils.Anomaly_Health_Monitering.logging_utils import get_logger
 
