@@ -93,7 +93,6 @@ class Config:
     XGB_PREDICTIONS_CSV: Path = OUTPUT_DIR / "xgb_predictions.csv"
     LGBM_PREDICTIONS_CSV: Path = OUTPUT_DIR / "lgbm_predictions.csv"
     MLP_TWIN_PREDICTIONS_CSV: Path = OUTPUT_DIR / "mlp_twin_predictions.csv"
-
     ENSEMBLE_PREDICTIONS_CSV: Path = OUTPUT_DIR / "ensemble_predictions.csv"
 
     # Backward-compatible TensorFlow prediction alias
@@ -117,11 +116,13 @@ class Config:
     MLP_TWIN_MODEL_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "mlp_digital_twin.keras"
     MLP_TWIN_METADATA_PATH: Path = DIGITAL_TWIN_MODEL_DIR / "mlp_digital_twin_metadata.json"
     MLP_TWIN_METRICS_CSV: Path = METRIC_DIR / "mlp_digital_twin_metrics.csv"
+    MLP_TWIN_PREDICTION_PREFIX: str = "tf_predicted_"
 
     # Backward-compatible TensorFlow aliases
     TF_MODEL_PATH: Path = MLP_TWIN_MODEL_PATH
     TF_MODEL_METADATA_PATH: Path = MLP_TWIN_METADATA_PATH
     TF_METRICS_CSV: Path = MLP_TWIN_METRICS_CSV
+    TF_PREDICTION_PREFIX: str = MLP_TWIN_PREDICTION_PREFIX
 
     # ==================================================================================
     # 4-model Ensemble Digital Twin - ACTIVE digital twin
@@ -300,10 +301,7 @@ class Config:
 
     RF_TRAIN_CHUNK_SIZE: int = 50_000
     RF_PREDICTION_BATCH_SIZE: int = 50_000
-
-    # Requested setting:
     RF_TRAIN_N_JOBS: int = 2
-
     RF_VERBOSE: int = 2
     RF_REBUILD_MEMMAP: bool = True
     RF_CLEANUP_MEMMAP_AFTER_TRAINING: bool = False
@@ -315,15 +313,20 @@ class Config:
         "min_samples_split": 5,
         "min_samples_leaf": 2,
         "random_state": RANDOM_SEED,
-
-        # This is also set to 2 for consistency.
-        # random_forest_twin.py can still override this with RF_TRAIN_N_JOBS.
         "n_jobs": RF_TRAIN_N_JOBS,
     }
 
     # ==================================================================================
-    # XGBoost and LightGBM parameters
+    # XGBoost full-dev memory-safe training parameters
     # ==================================================================================
+
+    XGB_TRAIN_CHUNK_SIZE: int = 50_000
+    XGB_PREDICTION_BATCH_SIZE: int = 50_000
+    XGB_TRAIN_N_JOBS: int = 2
+    XGB_VERBOSITY: int = 1
+    XGB_REBUILD_MEMMAP: bool = True
+    XGB_CLEANUP_MEMMAP_AFTER_TRAINING: bool = False
+    XGB_TRAIN_MEMMAP_DIR: Path = DIGITAL_TWIN_MODEL_DIR / "xgb_full_dev_memmap"
 
     XGB_PARAMS: Dict[str, int | float | str] = {
         "n_estimators": 180,
@@ -333,7 +336,21 @@ class Config:
         "colsample_bytree": 0.85,
         "objective": "reg:squarederror",
         "random_state": RANDOM_SEED,
+        "n_jobs": XGB_TRAIN_N_JOBS,
+        "verbosity": XGB_VERBOSITY,
     }
+
+    # ==================================================================================
+    # LightGBM full-dev memory-safe training parameters
+    # ==================================================================================
+
+    LGBM_TRAIN_CHUNK_SIZE: int = 50_000
+    LGBM_PREDICTION_BATCH_SIZE: int = 50_000
+    LGBM_TRAIN_N_JOBS: int = 2
+    LGBM_VERBOSITY: int = -1
+    LGBM_REBUILD_MEMMAP: bool = True
+    LGBM_CLEANUP_MEMMAP_AFTER_TRAINING: bool = False
+    LGBM_TRAIN_MEMMAP_DIR: Path = DIGITAL_TWIN_MODEL_DIR / "lgbm_full_dev_memmap"
 
     LGBM_PARAMS: Dict[str, int | float | str] = {
         "n_estimators": 180,
@@ -342,7 +359,9 @@ class Config:
         "subsample": 0.85,
         "colsample_bytree": 0.85,
         "random_state": RANDOM_SEED,
-        "verbose": -1,
+        "n_jobs": LGBM_TRAIN_N_JOBS,
+        "verbose": LGBM_VERBOSITY,
+        "verbosity": LGBM_VERBOSITY,
     }
 
     # ==================================================================================
@@ -411,6 +430,12 @@ class Config:
     TF_ANOMALY_LEARNING_RATE: float = RESIDUAL_AUTOENCODER_LEARNING_RATE
     TF_ANOMALY_VALIDATION_FRACTION: float = RESIDUAL_AUTOENCODER_VALIDATION_FRACTION
     TF_ANOMALY_THRESHOLD_PERCENTILE: float = RESIDUAL_AUTOENCODER_THRESHOLD_PERCENTILE
+
+    # ==================================================================================
+    # Comparator/evaluation parameters
+    # ==================================================================================
+
+    TWIN_COMPARATOR_CHUNK_SIZE: int = 25_000
 
     # ==================================================================================
     # Residual/anomaly/health thresholds and weights
@@ -515,6 +540,8 @@ class Config:
             cls.EXPERIMENT_DIR,
             cls.MLRUNS_DIR,
             cls.RF_TRAIN_MEMMAP_DIR,
+            cls.XGB_TRAIN_MEMMAP_DIR,
+            cls.LGBM_TRAIN_MEMMAP_DIR,
         ]
 
         for directory in directories:
@@ -532,8 +559,26 @@ if __name__ == "__main__":
     print(f"RF metadata path: {Config.RF_MODEL_METADATA_PATH}")
     print(f"RF predictions: {Config.RF_PREDICTIONS_CSV}")
 
+    print(f"XGB train n_jobs: {Config.XGB_TRAIN_N_JOBS}")
+    print(f"XGB memmap directory: {Config.XGB_TRAIN_MEMMAP_DIR}")
+    print(f"XGB model path: {Config.XGB_MODEL_PATH}")
+    print(f"XGB metadata path: {Config.XGB_MODEL_METADATA_PATH}")
+    print(f"XGB predictions: {Config.XGB_PREDICTIONS_CSV}")
+
+    print(f"LGBM train n_jobs: {Config.LGBM_TRAIN_N_JOBS}")
+    print(f"LGBM memmap directory: {Config.LGBM_TRAIN_MEMMAP_DIR}")
+    print(f"LGBM model path: {Config.LGBM_MODEL_PATH}")
+    print(f"LGBM metadata path: {Config.LGBM_MODEL_METADATA_PATH}")
+    print(f"LGBM predictions: {Config.LGBM_PREDICTIONS_CSV}")
+
     print(f"MLP model path: {Config.MLP_TWIN_MODEL_PATH}")
+    print(f"MLP metadata path: {Config.MLP_TWIN_METADATA_PATH}")
     print(f"MLP predictions: {Config.MLP_TWIN_PREDICTIONS_CSV}")
+    print(f"MLP prediction prefix: {Config.MLP_TWIN_PREDICTION_PREFIX}")
+
+    print(f"Ensemble weights path: {Config.ENSEMBLE_WEIGHTS_PATH}")
+    print(f"Ensemble metadata path: {Config.ENSEMBLE_METADATA_PATH}")
+    print(f"Ensemble predictions: {Config.ENSEMBLE_PREDICTIONS_CSV}")
 
     print(f"Active digital twin model: {Config.ACTIVE_DIGITAL_TWIN_MODEL_NAME}")
     print(f"Active digital twin library: {Config.ACTIVE_DIGITAL_TWIN_LIBRARY}")
@@ -543,3 +588,5 @@ if __name__ == "__main__":
     print(f"Active anomaly model: {Config.ACTIVE_ANOMALY_MODEL_NAME}")
     print(f"Active anomaly library: {Config.ACTIVE_ANOMALY_LIBRARY}")
     print(f"Active anomaly scores: {Config.ACTIVE_ANOMALY_SCORE_CSV}")
+
+    print(f"Twin comparator chunk size: {Config.TWIN_COMPARATOR_CHUNK_SIZE}")
