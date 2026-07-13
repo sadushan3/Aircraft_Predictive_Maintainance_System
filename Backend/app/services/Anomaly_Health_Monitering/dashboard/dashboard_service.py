@@ -28,7 +28,7 @@ if __package__ in {None, ""}:
     if _backend_root not in _sys.path:
         _sys.path.append(_backend_root)
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.services.Anomaly_Health_Monitering.dashboard.dashboard_data_generator import (
     DashboardDataGenerator,
 )
