@@ -37,7 +37,7 @@ if __package__ in {None, ""}:
         sys.path.append(BACKEND_ROOT)
 
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.utils.Anomaly_Health_Monitering.file_utils import atomic_write_csv
 from app.utils.Anomaly_Health_Monitering.logging_utils import get_logger
 from app.utils.Anomaly_Health_Monitering.model_utils import get_raw_xs_columns
