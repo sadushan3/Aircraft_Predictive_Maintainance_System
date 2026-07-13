@@ -1,0 +1,19 @@
+{
+    "formula": "health_index = 100 - 60*final_anomaly_score - 25*residual_trend_score - 15*anomaly_persistence_score",
+    "weights": {
+        "final_anomaly_score": 60.0,
+        "residual_trend_score": 25.0,
+        "anomaly_persistence_score": 15.0
+    },
+    "clip_range": [
+        0,
+        100
+    ],
+    "trend_window": 5,
+    "anomaly_persistence_threshold": 0.4,
+    "rul_prediction": false,
+    "uses_y_targets": false,
+    "uses_t_targets": false,
+    "input_file": "D:\\Aircraft_Predictive_Maintainance_System\\Backend\\outputs\\Anomaly_Health_Monitering\\anomaly_fusion.csv",
+    "output_file": "D:\\Aircraft_Predictive_Maintainance_System\\Backend\\outputs\\Anomaly_Health_Monitering\\health_index.csv"
+}
