@@ -15,7 +15,7 @@ if __package__ in {None, ""}:
         sys.path.insert(0, BACKEND_ROOT)
  
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 
 
 df = pd.read_csv(Config.RESIDUAL_ANOMALY_CSV, usecols=["split", "gmm_context_id", "residual_alert_level"])
