@@ -23,7 +23,7 @@ import pandas as pd
 if __package__ in {None, ""}:
     _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", ".."))
     if _backend_root not in _sys.path:
-        _sys.path.append(_backend_root)
+        _sys.path.insert(0, _backend_root)
 
 from app.utils.Anomaly_Health_Monitering.logging_utils import get_logger
 
