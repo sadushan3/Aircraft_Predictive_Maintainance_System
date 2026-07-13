@@ -165,7 +165,6 @@ class Config:
 
     ANOMALY_FUSION_CSV: Path = OUTPUT_DIR / "anomaly_fusion.csv"
 
-    # Backward-compatible residual autoencoder output
     RESIDUAL_AUTOENCODER_SCORES_CSV: Path = OUTPUT_DIR / "residual_autoencoder_scores.csv"
     TF_ANOMALY_CSV: Path = RESIDUAL_AUTOENCODER_SCORES_CSV
 
@@ -174,9 +173,7 @@ class Config:
     # ==================================================================================
 
     RESIDUAL_THRESHOLDS_PATH: Path = ANOMALY_MODEL_DIR / "residual_thresholds.json"
-
     IFOREST_MODEL_PATH: Path = ANOMALY_MODEL_DIR / "isolation_forest.pkl"
-
     MAHALANOBIS_PARAMS_PATH: Path = ANOMALY_MODEL_DIR / "mahalanobis_params.pkl"
 
     LSTM_AUTOENCODER_MODEL_PATH: Path = ANOMALY_MODEL_DIR / "lstm_autoencoder.keras"
@@ -187,7 +184,6 @@ class Config:
     FUSION_WEIGHTS_PATH: Path = ANOMALY_MODEL_DIR / "fusion_weights.json"
     ANOMALY_FUSION_METADATA_PATH: Path = ANOMALY_MODEL_DIR / "anomaly_fusion_metadata.json"
 
-    # Backward-compatible TensorFlow residual autoencoder paths
     RESIDUAL_AUTOENCODER_MODEL_NAME: str = "residual_autoencoder_anomaly_detector"
     RESIDUAL_AUTOENCODER_LIBRARY: str = "TensorFlow/Keras"
     RESIDUAL_AUTOENCODER_MODEL_PATH: Path = ANOMALY_MODEL_DIR / "residual_autoencoder.keras"
@@ -208,10 +204,13 @@ class Config:
 
     HEALTH_INDEX_CSV: Path = OUTPUT_DIR / "health_index.csv"
     HEALTH_STATES_CSV: Path = OUTPUT_DIR / "health_states.csv"
+    HEALTH_TRENDS_CSV: Path = OUTPUT_DIR / "health_trends.csv"
+    HEALTH_ALERTS_CSV: Path = OUTPUT_DIR / "health_alerts.csv"
 
     ROOT_CAUSE_CSV: Path = OUTPUT_DIR / "root_cause_analysis.csv"
     ROOT_CAUSE_MEMORY_CSV: Path = OUTPUT_DIR / "root_cause_memory.csv"
     TEMPORAL_REASONING_CSV: Path = OUTPUT_DIR / "temporal_reasoning.csv"
+    SENSOR_DEPENDENCY_GRAPH_CSV: Path = OUTPUT_DIR / "sensor_dependency_graph.csv"
 
     SHAP_CSV: Path = OUTPUT_DIR / "shap_explanations.csv"
     EXPLANATION_REPORTS_CSV: Path = OUTPUT_DIR / "explanation_reports.csv"
@@ -223,6 +222,23 @@ class Config:
     ALERT_MEMORY_CSV: Path = OUTPUT_DIR / "alert_memory.csv"
 
     DASHBOARD_CSV: Path = OUTPUT_DIR / "dashboard_data.csv"
+
+    # ==================================================================================
+    # Report / summary paths
+    # ==================================================================================
+
+    HEALTH_INDEX_SUMMARY_JSON: Path = REPORT_DIR / "health_index_summary.json"
+    HEALTH_STATE_SUMMARY_JSON: Path = REPORT_DIR / "health_state_summary.json"
+    HEALTH_TREND_SUMMARY_JSON: Path = REPORT_DIR / "health_trend_summary.json"
+    HEALTH_ALERT_SUMMARY_JSON: Path = REPORT_DIR / "health_alert_summary.json"
+    HEALTH_SCORE_ENGINE_SUMMARY_JSON: Path = REPORT_DIR / "health_score_engine_summary.json"
+
+    ROOT_CAUSE_SUMMARY_JSON: Path = REPORT_DIR / "root_cause_summary.json"
+    ROOT_CAUSE_MEMORY_SUMMARY_JSON: Path = REPORT_DIR / "root_cause_memory_summary.json"
+    TEMPORAL_REASONING_SUMMARY_JSON: Path = REPORT_DIR / "temporal_reasoning_summary.json"
+    SENSOR_DEPENDENCY_GRAPH_SUMMARY_JSON: Path = REPORT_DIR / "sensor_dependency_graph_summary.json"
+
+    EARLY_WARNING_SUMMARY_JSON: Path = REPORT_DIR / "early_warning_summary.json"
 
     # ==================================================================================
     # Saved preprocessing/context paths
@@ -273,15 +289,11 @@ class Config:
     }
 
     # ==================================================================================
-    # Split names
+    # Split names and global constants
     # ==================================================================================
 
     DEV_SPLIT_NAME: str = "dev"
     TEST_SPLIT_NAME: str = "test"
-
-    # ==================================================================================
-    # Global constants
-    # ==================================================================================
 
     RANDOM_SEED: int = 42
     CONTEXT_CLUSTER_COUNT: int = 6
@@ -441,18 +453,10 @@ class Config:
     # ==================================================================================
 
     IFOREST_CHUNK_SIZE: int = 50_000
-
-    # Strong setting:
-    # Uses a large dev-only reservoir sample, safer than forcing all 4.9M dev rows.
     IFOREST_TRAIN_SAMPLE_SIZE: int = 1_000_000
-
     IFOREST_N_ESTIMATORS: int = 200
     IFOREST_N_JOBS: int = 2
     IFOREST_CONTAMINATION: str = "auto"
-
-    # Important:
-    # "all" means every Isolation Forest tree uses all collected sample rows
-    # instead of sklearn's default max_samples="auto".
     IFOREST_MAX_SAMPLES: str = "all"
 
     # ==================================================================================
@@ -544,6 +548,18 @@ class Config:
     }
 
     # ==================================================================================
+    # Severity / early warning settings
+    # ==================================================================================
+
+    EARLY_WARNING_CSV: Path = OUTPUT_DIR / "early_warning_scores.csv"
+    EARLY_WARNING_CHUNK_SIZE: int = 25_000
+    EARLY_WARNING_ROLLING_WINDOW: int = ROLLING_WINDOW
+    EARLY_WARNING_MEAN_WEIGHT: float = 0.70
+    EARLY_WARNING_SLOPE_WEIGHT: float = 0.30
+    EARLY_WARNING_WATCH_THRESHOLD: float = 0.40
+    EARLY_WARNING_INCREASING_THRESHOLD: float = 0.65
+
+    # ==================================================================================
     # Evaluation settings
     # ==================================================================================
 
@@ -554,8 +570,14 @@ class Config:
 
     ENSEMBLE_EVALUATION_CHUNK_SIZE: int = 25_000
 
+    ANOMALY_EVALUATION_CHUNK_SIZE: int = 25_000
+    ANOMALY_EVALUATION_PERSISTENCE_WINDOW: int = ROLLING_WINDOW
+    ANOMALY_EVALUATION_ALERT_THRESHOLD: float = 0.40
+
+    HEALTH_EVALUATION_CHUNK_SIZE: int = 25_000
+
     # ==================================================================================
-    # Health / confidence / feedback weights
+    # Health monitoring settings
     # ==================================================================================
 
     HEALTH_WEIGHTS: Dict[str, float] = {
@@ -563,6 +585,37 @@ class Config:
         "residual_trend_score": 25.0,
         "anomaly_persistence_score": 15.0,
     }
+
+    HEALTH_INDEX_CHUNK_SIZE: int = 25_000
+    HEALTH_TREND_WINDOW: int = ROLLING_WINDOW
+    HEALTH_ANOMALY_PERSISTENCE_THRESHOLD: float = 0.40
+
+    HEALTH_STATE_CHUNK_SIZE: int = 25_000
+
+    HEALTH_TREND_CHUNK_SIZE: int = 25_000
+    HEALTH_TREND_TRACKING_WINDOW: int = ROLLING_WINDOW
+    HEALTH_TREND_DELTA_THRESHOLD: float = 2.0
+
+    HEALTH_ALERT_CHUNK_SIZE: int = 25_000
+
+    HEALTH_SCORE_FORCE_REBUILD: bool = False
+
+    # ==================================================================================
+    # Reasoning settings
+    # ==================================================================================
+
+    ROOT_CAUSE_CHUNK_SIZE: int = 25_000
+
+    ROOT_CAUSE_TRACKER_CHUNK_SIZE: int = 500000
+    ROOT_CAUSE_LOOKBACK_WINDOW: int = 20
+
+    TEMPORAL_REASONING_CHUNK_SIZE: int = 25_000
+    TEMPORAL_REASONING_WINDOW: int = ROLLING_WINDOW
+    TEMPORAL_REASONING_ANOMALY_THRESHOLD: float = 0.40
+
+    # ==================================================================================
+    # Confidence / feedback settings
+    # ==================================================================================
 
     CONFIDENCE_WEIGHTS: Dict[str, float] = {
         "model_agreement_score": 0.35,
@@ -651,54 +704,49 @@ if __name__ == "__main__":
 
     print(f"{Config.PROJECT_NAME} directory structure initialized at: {Config.BASE_DIR}")
 
-    print(f"RF train n_jobs: {Config.RF_TRAIN_N_JOBS}")
-    print(f"RF memmap directory: {Config.RF_TRAIN_MEMMAP_DIR}")
+    print("=" * 100)
+    print("Digital twin models")
     print(f"RF model path: {Config.RF_MODEL_PATH}")
-    print(f"RF metadata path: {Config.RF_MODEL_METADATA_PATH}")
-    print(f"RF predictions: {Config.RF_PREDICTIONS_CSV}")
-
-    print(f"XGB train n_jobs: {Config.XGB_TRAIN_N_JOBS}")
-    print(f"XGB memmap directory: {Config.XGB_TRAIN_MEMMAP_DIR}")
     print(f"XGB model path: {Config.XGB_MODEL_PATH}")
-    print(f"XGB metadata path: {Config.XGB_MODEL_METADATA_PATH}")
-    print(f"XGB predictions: {Config.XGB_PREDICTIONS_CSV}")
-
-    print(f"LGBM train n_jobs: {Config.LGBM_TRAIN_N_JOBS}")
-    print(f"LGBM memmap directory: {Config.LGBM_TRAIN_MEMMAP_DIR}")
     print(f"LGBM model path: {Config.LGBM_MODEL_PATH}")
-    print(f"LGBM metadata path: {Config.LGBM_MODEL_METADATA_PATH}")
-    print(f"LGBM predictions: {Config.LGBM_PREDICTIONS_CSV}")
-
     print(f"MLP model path: {Config.MLP_TWIN_MODEL_PATH}")
-    print(f"MLP metadata path: {Config.MLP_TWIN_METADATA_PATH}")
-    print(f"MLP predictions: {Config.MLP_TWIN_PREDICTIONS_CSV}")
-    print(f"MLP prediction prefix: {Config.MLP_TWIN_PREDICTION_PREFIX}")
-
-    print(f"Ensemble weights path: {Config.ENSEMBLE_WEIGHTS_PATH}")
-    print(f"Ensemble metadata path: {Config.ENSEMBLE_METADATA_PATH}")
     print(f"Ensemble predictions: {Config.ENSEMBLE_PREDICTIONS_CSV}")
 
+    print("=" * 100)
+    print("Anomaly outputs")
     print(f"Residual anomaly CSV: {Config.RESIDUAL_ANOMALY_CSV}")
     print(f"Isolation Forest CSV: {Config.IFOREST_CSV}")
     print(f"Mahalanobis CSV: {Config.MAHALANOBIS_CSV}")
     print(f"LSTM Autoencoder CSV: {Config.LSTM_AUTOENCODER_CSV}")
     print(f"Anomaly fusion CSV: {Config.ANOMALY_FUSION_CSV}")
+    print(f"Early warning CSV: {Config.EARLY_WARNING_CSV}")
 
-    print(f"LSTM model path: {Config.LSTM_AUTOENCODER_MODEL_PATH}")
-    print(f"LSTM scaler path: {Config.LSTM_AUTOENCODER_SCALER_PATH}")
-    print(f"LSTM metadata path: {Config.LSTM_AUTOENCODER_METADATA_PATH}")
+    print("=" * 100)
+    print("Health outputs")
+    print(f"Health index CSV: {Config.HEALTH_INDEX_CSV}")
+    print(f"Health states CSV: {Config.HEALTH_STATES_CSV}")
+    print(f"Health trends CSV: {Config.HEALTH_TRENDS_CSV}")
+    print(f"Health alerts CSV: {Config.HEALTH_ALERTS_CSV}")
 
-    print(f"IForest train sample size: {Config.IFOREST_TRAIN_SAMPLE_SIZE}")
-    print(f"IForest max samples: {Config.IFOREST_MAX_SAMPLES}")
-    print(f"IForest estimators: {Config.IFOREST_N_ESTIMATORS}")
+    print("=" * 100)
+    print("Reasoning outputs")
+    print(f"Sensor dependency graph CSV: {Config.SENSOR_DEPENDENCY_GRAPH_CSV}")
+    print(f"Root cause CSV: {Config.ROOT_CAUSE_CSV}")
+    print(f"Root cause memory CSV: {Config.ROOT_CAUSE_MEMORY_CSV}")
+    print(f"Temporal reasoning CSV: {Config.TEMPORAL_REASONING_CSV}")
 
+    print("=" * 100)
+    print("Active models")
     print(f"Active digital twin model: {Config.ACTIVE_DIGITAL_TWIN_MODEL_NAME}")
     print(f"Active digital twin library: {Config.ACTIVE_DIGITAL_TWIN_LIBRARY}")
-    print(f"Active digital twin predictions: {Config.ACTIVE_DIGITAL_TWIN_PREDICTIONS_CSV}")
-    print(f"Active digital twin prefix: {Config.ACTIVE_DIGITAL_TWIN_PREDICTION_PREFIX}")
-
     print(f"Active anomaly model: {Config.ACTIVE_ANOMALY_MODEL_NAME}")
     print(f"Active anomaly library: {Config.ACTIVE_ANOMALY_LIBRARY}")
-    print(f"Active anomaly scores: {Config.ACTIVE_ANOMALY_SCORE_CSV}")
 
-    print(f"Twin comparator chunk size: {Config.TWIN_COMPARATOR_CHUNK_SIZE}")
+    print("=" * 100)
+    print("Memory-safe chunk sizes")
+    print(f"Residual chunk size: {Config.RESIDUAL_CHUNK_SIZE}")
+    print(f"Anomaly fusion chunk size: {Config.ANOMALY_FUSION_CHUNK_SIZE}")
+    print(f"Health index chunk size: {Config.HEALTH_INDEX_CHUNK_SIZE}")
+    print(f"Health state chunk size: {Config.HEALTH_STATE_CHUNK_SIZE}")
+    print(f"Root cause chunk size: {Config.ROOT_CAUSE_CHUNK_SIZE}")
+    print(f"Temporal reasoning chunk size: {Config.TEMPORAL_REASONING_CHUNK_SIZE}")
