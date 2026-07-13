@@ -1,0 +1,21 @@
+{
+    "weights": {
+        "residual": 0.35,
+        "iforest": 0.2,
+        "mahalanobis": 0.2,
+        "lstm_autoencoder": 0.25
+    },
+    "formula": "final_anomaly_score = 0.3500*residual_anomaly_score + 0.2000*iforest_anomaly_score + 0.2000*mahalanobis_score + 0.2500*lstm_autoencoder_score",
+    "detectors": [
+        "residual_threshold",
+        "isolation_forest",
+        "mahalanobis",
+        "lstm_autoencoder"
+    ],
+    "score_range": [
+        0.0,
+        1.0
+    ],
+    "fit_split": "dev",
+    "test_usage": "score_only"
+}
