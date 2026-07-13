@@ -59,10 +59,10 @@ if __package__ in {None, ""}:
     )
 
     if BACKEND_ROOT not in sys.path:
-        sys.path.append(BACKEND_ROOT)
+        sys.path.insert(0, BACKEND_ROOT)
 
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.utils.Anomaly_Health_Monitering.file_utils import (
     atomic_save_joblib,
     atomic_write_json,
