@@ -37,7 +37,7 @@ if __package__ in {None, ""}:
     if _backend_root not in _sys.path:
         _sys.path.append(_backend_root)
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.utils.Anomaly_Health_Monitering.file_utils import atomic_write_csv, read_csv_required
 from app.utils.Anomaly_Health_Monitering.logging_utils import get_logger
 from app.utils.Anomaly_Health_Monitering.model_utils import normalize_min_max, safe_clip_01
