@@ -12,7 +12,7 @@ if __package__ in {None, ""}:
     if BACKEND_ROOT not in sys.path:
         sys.path.append(BACKEND_ROOT)
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.utils.Anomaly_Health_Monitering.model_utils import (
     get_raw_xs_columns,
     get_w_columns,
