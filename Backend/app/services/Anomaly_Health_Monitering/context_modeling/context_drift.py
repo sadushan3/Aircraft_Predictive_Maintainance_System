@@ -31,7 +31,7 @@ if __package__ in {None, ""}:
     else:
         print("[PROGRESS] Backend root already exists in sys.path")
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.utils.Anomaly_Health_Monitering.file_utils import (
     atomic_write_csv,
     load_joblib_required,
