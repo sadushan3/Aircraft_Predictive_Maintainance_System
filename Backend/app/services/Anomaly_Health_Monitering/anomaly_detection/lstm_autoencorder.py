@@ -46,7 +46,7 @@ print(
 
 from pathlib import Path
 from time import perf_counter
-from typing import Dict, Generator, Iterable, List, Tuple
+from typing import Any, Dict, Generator, List, Tuple
 import gc
 import json
 import math
@@ -59,14 +59,24 @@ from sklearn.preprocessing import StandardScaler
 
 try:
     import tensorflow as tf
-    from tensorflow.keras import Model
-    from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-    from tensorflow.keras.layers import Dense, Dropout, Input, LSTM, RepeatVector, TimeDistributed
-    from tensorflow.keras.models import load_model
-    from tensorflow.keras.optimizers import Adam
 except Exception:
     tf = None
-    Model = object
+
+if tf is not None:
+    KerasModel: Any = tf.keras.Model
+    EarlyStopping: Any = tf.keras.callbacks.EarlyStopping
+    ModelCheckpoint: Any = tf.keras.callbacks.ModelCheckpoint
+    ReduceLROnPlateau: Any = tf.keras.callbacks.ReduceLROnPlateau
+    Input: Any = tf.keras.layers.Input
+    LSTM: Any = tf.keras.layers.LSTM
+    RepeatVector: Any = tf.keras.layers.RepeatVector
+    TimeDistributed: Any = tf.keras.layers.TimeDistributed
+    Dense: Any = tf.keras.layers.Dense
+    Dropout: Any = tf.keras.layers.Dropout
+    Adam: Any = tf.keras.optimizers.Adam
+    load_model: Any = tf.keras.models.load_model
+else:
+    KerasModel = None
     EarlyStopping = None
     ModelCheckpoint = None
     ReduceLROnPlateau = None
@@ -90,10 +100,10 @@ if __package__ in {None, ""}:
     )
 
     if BACKEND_ROOT not in sys.path:
-        sys.path.append(BACKEND_ROOT)
+        sys.path.insert(0, BACKEND_ROOT)
 
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.utils.Anomaly_Health_Monitering.file_utils import (
     atomic_save_joblib,
     atomic_write_json,
@@ -571,7 +581,7 @@ class LSTMAutoencoderDetector:
         feature_columns: List[str],
         scaler: StandardScaler,
         mode: str,
-    ) -> tf.data.Dataset:
+    ) -> Any:
         """
         Build a repeating TensorFlow dataset from streaming CSV sequence batches.
         """
@@ -603,7 +613,7 @@ class LSTMAutoencoderDetector:
     # Model
     # ==================================================================================
 
-    def build_model(self, n_features: int) -> Model:
+    def build_model(self, n_features: int) -> Any:
         """
         Build LSTM Autoencoder model.
         """
@@ -647,7 +657,11 @@ class LSTMAutoencoderDetector:
             name="reconstructed_sequence",
         )(x)
 
-        model = Model(inputs=input_layer, outputs=output_layer, name="lstm_residual_autoencoder")
+        model = KerasModel(
+            inputs=input_layer,
+            outputs=output_layer,
+            name="lstm_residual_autoencoder",
+        )
 
         model.compile(
             optimizer=Adam(learning_rate=self.learning_rate),
@@ -832,7 +846,7 @@ class LSTMAutoencoderDetector:
 
     def fit_threshold(
         self,
-        model: Model,
+        model: Any,
         scaler: StandardScaler,
         feature_columns: List[str],
     ) -> Dict[str, object]:
@@ -905,7 +919,7 @@ class LSTMAutoencoderDetector:
 
     def _flush_score_batch(
         self,
-        model: Model,
+        model: Any,
         sequences: List[np.ndarray],
         positions: List[int],
         raw_errors: np.ndarray,
