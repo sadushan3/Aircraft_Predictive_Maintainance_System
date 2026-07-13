@@ -28,7 +28,7 @@ import pandas as pd
 if __package__ in {None, ""}:
     sys.path.append(str(Path(__file__).resolve().parents[4]))
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 from app.utils.Anomaly_Health_Monitering.logging_utils import get_logger
 
 logger = get_logger(__name__)
