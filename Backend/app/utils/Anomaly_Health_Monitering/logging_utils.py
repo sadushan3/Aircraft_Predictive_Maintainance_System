@@ -15,9 +15,9 @@ import sys as _sys
 if __package__ in {None, ""}:
     _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
     if _backend_root not in _sys.path:
-        _sys.path.append(_backend_root)
+        _sys.path.insert(0, _backend_root)
 
-from app.config.Anomaly_Health_Monitering.Config import Config
+from app.config.Anomaly_Health_Monitering.config import Config
 
 
 def get_logger(name: str) -> logging.Logger:
