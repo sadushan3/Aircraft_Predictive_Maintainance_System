@@ -12,7 +12,7 @@ Each explanation includes:
 - Top contributing sensors
 - Sensor contribution percentages
 - Root-cause pattern
-- Confidence score when available
+- Real confidence / uncertainty / reliability values when available
 - Inspection focus
 
 Reads:
@@ -83,6 +83,40 @@ class ExplanationGenerator:
     Memory-safe human-readable explanation generator.
     """
 
+    OUTPUT_COLUMNS: List[str] = [
+        "unit_id",
+        "cycle",
+        "split",
+        "kmeans_context_id",
+        "gmm_context_id",
+        "context_confidence",
+        "final_anomaly_score",
+        "alert_level",
+        "health_index",
+        "health_state",
+        "remaining_health_percentage",
+        "anomaly_persistence_score",
+        "residual_trend_score",
+        "top_sensor_1",
+        "top_sensor_2",
+        "top_sensor_3",
+        "contribution_1",
+        "contribution_2",
+        "contribution_3",
+        "root_cause_pattern",
+        "inspection_focus",
+        "total_abs_residual",
+        "top3_contribution_sum",
+        "dominant_detector",
+        "model_agreement_score",
+        "confidence_score",
+        "uncertainty_score",
+        "reliability_score",
+        "explanation_text",
+        "maintenance_decision",
+        "component_role",
+    ]
+
     def __init__(self, chunk_size: int = 100_000) -> None:
         """
         Initialize explanation generator.
@@ -126,14 +160,23 @@ class ExplanationGenerator:
     # File helpers
     # ==================================================================================
 
-    def _count_csv_rows(self, path: Path) -> int:
+    def _count_csv_rows(self, path: Path, required: bool = True) -> int:
         """
         Count CSV rows without loading full file.
+
+        Args:
+            path: CSV path.
+            required: Whether missing file should raise.
+
+        Returns:
+            int: Data row count.
         """
         print(f"[PROGRESS] Counting rows safely: {path}")
 
         if not path.exists():
-            raise FileNotFoundError(f"CSV file not found: {path}")
+            if required:
+                raise FileNotFoundError(f"CSV file not found: {path}")
+            return 0
 
         with path.open("r", encoding="utf-8") as file:
             row_count = sum(1 for _ in file) - 1
@@ -142,14 +185,23 @@ class ExplanationGenerator:
         print(f"[PROGRESS] Row count for {path.name}: {row_count}")
         return row_count
 
-    def _read_header_columns(self, path: Path) -> List[str]:
+    def _read_header_columns(self, path: Path, required: bool = True) -> List[str]:
         """
         Read CSV header only.
+
+        Args:
+            path: CSV path.
+            required: Whether missing file should raise.
+
+        Returns:
+            List[str]: Header columns.
         """
         print(f"[PROGRESS] Reading header columns from: {path}")
 
         if not path.exists():
-            raise FileNotFoundError(f"CSV file not found: {path}")
+            if required:
+                raise FileNotFoundError(f"CSV file not found: {path}")
+            return []
 
         return list(pd.read_csv(path, nrows=0).columns)
 
@@ -298,7 +350,7 @@ class ExplanationGenerator:
         return usecols
 
     # ==================================================================================
-    # Text generation
+    # Text helpers
     # ==================================================================================
 
     def _series_or_default(
@@ -314,6 +366,32 @@ class ExplanationGenerator:
             return df[column].fillna(default_value)
 
         return pd.Series([default_value] * len(df), index=df.index)
+
+    def _safe_float(self, value: object, default: float = 0.0) -> float:
+        """
+        Safely convert value to float.
+        """
+        try:
+            if pd.isna(value):
+                return float(default)
+            return float(value)
+        except Exception:
+            return float(default)
+
+    def _safe_int(self, value: object, default: int = -1) -> int:
+        """
+        Safely convert value to int.
+        """
+        try:
+            if pd.isna(value):
+                return int(default)
+            return int(float(value))
+        except Exception:
+            return int(default)
+
+    # ==================================================================================
+    # Text generation
+    # ==================================================================================
 
     def _build_texts(
         self,
@@ -357,10 +435,10 @@ class ExplanationGenerator:
                 0.0,
             )
         else:
-            model_agreement = pd.Series([0.0] * n)
-            confidence_score = pd.Series([0.0] * n)
-            uncertainty_score = pd.Series([1.0] * n)
-            reliability_score = pd.Series([0.0] * n)
+            model_agreement = pd.Series([0.0] * n, index=health_chunk.index)
+            confidence_score = pd.Series([0.0] * n, index=health_chunk.index)
+            uncertainty_score = pd.Series([1.0] * n, index=health_chunk.index)
+            reliability_score = pd.Series([0.0] * n, index=health_chunk.index)
 
         alert_level = self._series_or_default(health_chunk, "alert_level", "Normal")
         health_index = self._series_or_default(health_chunk, "health_index", 100.0)
@@ -435,27 +513,34 @@ class ExplanationGenerator:
                 reliability,
             ) = values
 
+            agreement_value = self._safe_float(agreement, 0.0)
+            confidence_value = self._safe_float(conf, 0.0)
+            uncertainty_value = self._safe_float(uncert, 1.0)
+            reliability_value = self._safe_float(reliability, 0.0)
+            context_conf_value = self._safe_float(ctx_conf, 0.0)
+
             text = (
                 f"The engine shows a {alert} alert under GMM operating context "
-                f"{int(float(gmm_id)) if pd.notna(gmm_id) else -1}. "
+                f"{self._safe_int(gmm_id, -1)}. "
                 f"The baseline K-Means context is "
-                f"{int(float(kmeans_id)) if pd.notna(kmeans_id) else -1}. "
+                f"{self._safe_int(kmeans_id, -1)}. "
                 f"The ensemble digital twin estimated expected measured sensor behavior "
                 f"using operating conditions, virtual sensors, and context information, "
                 f"then compared it with actual measured sensors. "
-                f"The final anomaly score is {float(anomaly_score):.3f}. "
-                f"The health index is {float(h_index):.1f}/100 and the health state is "
-                f"{h_state}. The main contributing sensors are "
-                f"{sensor_1} ({float(contrib_1) * 100.0:.1f}%), "
-                f"{sensor_2} ({float(contrib_2) * 100.0:.1f}%), and "
-                f"{sensor_3} ({float(contrib_3) * 100.0:.1f}%). "
+                f"The final anomaly score is {self._safe_float(anomaly_score, 0.0):.3f}. "
+                f"The health index is {self._safe_float(h_index, 100.0):.1f}/100 "
+                f"and the health state is {h_state}. "
+                f"The main contributing sensors are "
+                f"{sensor_1} ({self._safe_float(contrib_1, 0.0) * 100.0:.1f}%), "
+                f"{sensor_2} ({self._safe_float(contrib_2, 0.0) * 100.0:.1f}%), and "
+                f"{sensor_3} ({self._safe_float(contrib_3, 0.0) * 100.0:.1f}%). "
                 f"The residual pattern is classified as {pattern}. "
                 f"Recommended inspection focus: {focus} "
-                f"Context confidence is {float(ctx_conf) * 100.0:.1f}%, "
-                f"model agreement is {float(agreement) * 100.0:.1f}%, "
-                f"confidence is {float(conf) * 100.0:.1f}%, "
-                f"uncertainty is {float(uncert) * 100.0:.1f}%, and "
-                f"reliability is {float(reliability) * 100.0:.1f}%. "
+                f"Context confidence is {context_conf_value * 100.0:.1f}%, "
+                f"model agreement is {agreement_value * 100.0:.1f}%, "
+                f"confidence is {confidence_value * 100.0:.1f}%, "
+                f"uncertainty is {uncertainty_value * 100.0:.1f}%, and "
+                f"reliability is {reliability_value * 100.0:.1f}%. "
                 f"This explanation supports inspection focus only and does not make "
                 f"maintenance scheduling decisions."
             )
@@ -463,6 +548,125 @@ class ExplanationGenerator:
             texts.append(text)
 
         return texts
+
+    # ==================================================================================
+    # Result chunk builder
+    # ==================================================================================
+
+    def _build_result_chunk(
+        self,
+        health_chunk: pd.DataFrame,
+        root_chunk: pd.DataFrame,
+        context_chunk: pd.DataFrame,
+        confidence_chunk: Optional[pd.DataFrame],
+        explanation_texts: List[str],
+    ) -> pd.DataFrame:
+        """
+        Build output chunk with all dashboard-useful explanation fields.
+        """
+        result_chunk = health_chunk[["unit_id", "cycle", "split"]].copy()
+
+        context_defaults = {
+            "kmeans_context_id": -1,
+            "gmm_context_id": -1,
+            "context_confidence": 0.0,
+        }
+
+        for column, default_value in context_defaults.items():
+            if column in context_chunk.columns:
+                result_chunk[column] = context_chunk[column].values
+            else:
+                result_chunk[column] = default_value
+
+        health_defaults = {
+            "final_anomaly_score": 0.0,
+            "alert_level": "Normal",
+            "health_index": 100.0,
+            "health_state": "Healthy",
+            "remaining_health_percentage": 100.0,
+            "anomaly_persistence_score": 0.0,
+            "residual_trend_score": 0.0,
+        }
+
+        for column, default_value in health_defaults.items():
+            if column in health_chunk.columns:
+                result_chunk[column] = health_chunk[column].values
+            else:
+                result_chunk[column] = default_value
+
+        root_defaults = {
+            "top_sensor_1": "unknown",
+            "top_sensor_2": "unknown",
+            "top_sensor_3": "unknown",
+            "contribution_1": 0.0,
+            "contribution_2": 0.0,
+            "contribution_3": 0.0,
+            "root_cause_pattern": "unknown_residual_pattern",
+            "inspection_focus": "Inspect the top contributing measured sensor channels.",
+            "total_abs_residual": 0.0,
+            "top3_contribution_sum": 0.0,
+            "dominant_detector": "unknown",
+        }
+
+        for column, default_value in root_defaults.items():
+            if column in root_chunk.columns:
+                result_chunk[column] = root_chunk[column].values
+            else:
+                result_chunk[column] = default_value
+
+        confidence_defaults = {
+            "model_agreement_score": 0.0,
+            "confidence_score": 0.0,
+            "uncertainty_score": 1.0,
+            "reliability_score": 0.0,
+        }
+
+        if confidence_chunk is not None:
+            for column, default_value in confidence_defaults.items():
+                if column in confidence_chunk.columns:
+                    result_chunk[column] = confidence_chunk[column].values
+                else:
+                    result_chunk[column] = default_value
+        else:
+            for column, default_value in confidence_defaults.items():
+                result_chunk[column] = default_value
+
+        for column in result_chunk.columns:
+            if column in {
+                "final_anomaly_score",
+                "health_index",
+                "remaining_health_percentage",
+                "anomaly_persistence_score",
+                "residual_trend_score",
+                "contribution_1",
+                "contribution_2",
+                "contribution_3",
+                "total_abs_residual",
+                "top3_contribution_sum",
+                "context_confidence",
+                "model_agreement_score",
+                "confidence_score",
+                "uncertainty_score",
+                "reliability_score",
+            }:
+                result_chunk[column] = pd.to_numeric(
+                    result_chunk[column],
+                    errors="coerce",
+                ).fillna(0.0)
+
+        result_chunk["explanation_text"] = explanation_texts
+        result_chunk["maintenance_decision"] = "Not generated by this component"
+        result_chunk["component_role"] = (
+            "Human-readable explanation and inspection-focus support"
+        )
+
+        for column in self.OUTPUT_COLUMNS:
+            if column not in result_chunk.columns:
+                result_chunk[column] = np.nan
+
+        result_chunk = result_chunk[self.OUTPUT_COLUMNS].copy()
+
+        return result_chunk
 
     # ==================================================================================
     # Main generation
@@ -473,6 +677,8 @@ class ExplanationGenerator:
         Generate explanation reports in memory-safe chunks.
         """
         print("[PROGRESS] Entering ExplanationGenerator.run")
+
+        temp_output_path: Optional[Path] = None
 
         try:
             started = perf_counter()
@@ -487,12 +693,14 @@ class ExplanationGenerator:
 
             if root_rows != expected_rows:
                 raise ValueError(
-                    f"root_cause_analysis.csv row mismatch: {root_rows} != {expected_rows}"
+                    f"root_cause_analysis.csv row mismatch: "
+                    f"{root_rows} != {expected_rows}"
                 )
 
             if context_rows != expected_rows:
                 raise ValueError(
-                    f"context_clusters.csv row mismatch: {context_rows} != {expected_rows}"
+                    f"context_clusters.csv row mismatch: "
+                    f"{context_rows} != {expected_rows}"
                 )
 
             health_columns = self._read_header_columns(self.health_csv)
@@ -511,7 +719,9 @@ class ExplanationGenerator:
 
                 if confidence_rows == expected_rows:
                     confidence_columns = self._read_header_columns(self.confidence_csv)
-                    confidence_usecols = self._build_confidence_usecols(confidence_columns)
+                    confidence_usecols = self._build_confidence_usecols(
+                        confidence_columns
+                    )
                     confidence_available = True
                 else:
                     print(
@@ -519,7 +729,16 @@ class ExplanationGenerator:
                         "Confidence fields will use defaults."
                     )
             else:
-                print("[WARNING] confidence_scores.csv not found. Confidence fields will use defaults.")
+                print(
+                    "[WARNING] confidence_scores.csv not found. "
+                    "Confidence fields will use defaults."
+                )
+
+            print(f"[PROGRESS] Confidence available: {confidence_available}")
+            print(f"[PROGRESS] Health usecols: {health_usecols}")
+            print(f"[PROGRESS] Root usecols: {root_usecols}")
+            print(f"[PROGRESS] Context usecols: {context_usecols}")
+            print(f"[PROGRESS] Confidence usecols: {confidence_usecols}")
 
             health_iter = pd.read_csv(
                 self.health_csv,
@@ -570,6 +789,11 @@ class ExplanationGenerator:
             health_state_counts: Dict[str, int] = {}
             pattern_counts: Dict[str, int] = {}
 
+            confidence_sum = 0.0
+            uncertainty_sum = 0.0
+            reliability_sum = 0.0
+            model_agreement_sum = 0.0
+
             print("[PROGRESS] Starting memory-safe explanation generation")
 
             for health_chunk, root_chunk, context_chunk in zip(
@@ -587,13 +811,27 @@ class ExplanationGenerator:
                 print(f"[PROGRESS] Explanation generation chunk #{chunk_index}")
                 print(f"[PROGRESS] Chunk rows: {len(health_chunk)}")
 
-                self._verify_key_alignment(health_chunk, root_chunk, "root_cause_analysis.csv")
-                self._verify_key_alignment(health_chunk, context_chunk, "context_clusters.csv")
+                self._verify_key_alignment(
+                    health_chunk,
+                    root_chunk,
+                    "root_cause_analysis.csv",
+                )
+                self._verify_key_alignment(
+                    health_chunk,
+                    context_chunk,
+                    "context_clusters.csv",
+                )
 
                 confidence_chunk = None
 
                 if confidence_iter is not None:
-                    confidence_chunk = next(confidence_iter).reset_index(drop=True)
+                    try:
+                        confidence_chunk = next(confidence_iter).reset_index(drop=True)
+                    except StopIteration as exc:
+                        raise ValueError(
+                            "confidence_scores.csv ended before health_states.csv."
+                        ) from exc
+
                     self._verify_key_alignment(
                         health_chunk,
                         confidence_chunk,
@@ -607,68 +845,13 @@ class ExplanationGenerator:
                     confidence_chunk=confidence_chunk,
                 )
 
-                result_chunk = health_chunk[["unit_id", "cycle", "split"]].copy()
-
-                for column in ["kmeans_context_id", "gmm_context_id", "context_confidence"]:
-                    if column in context_chunk.columns:
-                        result_chunk[column] = context_chunk[column].values
-                    else:
-                        result_chunk[column] = -1 if "context_id" in column else 0.0
-
-                health_passthrough = [
-                    "final_anomaly_score",
-                    "alert_level",
-                    "health_index",
-                    "health_state",
-                    "remaining_health_percentage",
-                    "anomaly_persistence_score",
-                    "residual_trend_score",
-                ]
-
-                for column in health_passthrough:
-                    if column in health_chunk.columns:
-                        result_chunk[column] = health_chunk[column].values
-
-                root_passthrough = [
-                    "top_sensor_1",
-                    "top_sensor_2",
-                    "top_sensor_3",
-                    "contribution_1",
-                    "contribution_2",
-                    "contribution_3",
-                    "root_cause_pattern",
-                    "inspection_focus",
-                    "total_abs_residual",
-                    "top3_contribution_sum",
-                    "dominant_detector",
-                ]
-
-                for column in root_passthrough:
-                    if column in root_chunk.columns:
-                        result_chunk[column] = root_chunk[column].values
-
-                confidence_columns = [
-                    "model_agreement_score",
-                    "confidence_score",
-                    "uncertainty_score",
-                    "reliability_score",
-                ]
-
-                if confidence_chunk is not None:
-                    for column in confidence_columns:
-                        if column in confidence_chunk.columns:
-                            result_chunk[column] = confidence_chunk[column].values
-                        else:
-                            result_chunk[column] = 0.0
-                else:
-                    result_chunk["model_agreement_score"] = 0.0
-                    result_chunk["confidence_score"] = 0.0
-                    result_chunk["uncertainty_score"] = 1.0
-                    result_chunk["reliability_score"] = 0.0
-
-                result_chunk["explanation_text"] = explanation_texts
-                result_chunk["maintenance_decision"] = "Not generated by this component"
-                result_chunk["component_role"] = "Human-readable explanation and inspection-focus support"
+                result_chunk = self._build_result_chunk(
+                    health_chunk=health_chunk,
+                    root_chunk=root_chunk,
+                    context_chunk=context_chunk,
+                    confidence_chunk=confidence_chunk,
+                    explanation_texts=explanation_texts,
+                )
 
                 result_chunk.to_csv(
                     temp_output_path,
@@ -685,24 +868,41 @@ class ExplanationGenerator:
                     ("health_state", health_state_counts),
                 ]:
                     if source_column in result_chunk.columns:
-                        unique_values, unique_counts = np.unique(
-                            result_chunk[source_column].astype(str).to_numpy(dtype=object),
-                            return_counts=True,
-                        )
-
-                        for value, count in zip(unique_values, unique_counts):
+                        counts = result_chunk[source_column].astype(str).value_counts().to_dict()
+                        for value, count in counts.items():
                             target_dict[str(value)] = target_dict.get(str(value), 0) + int(count)
 
                 if "root_cause_pattern" in result_chunk.columns:
-                    unique_patterns, unique_pattern_counts = np.unique(
-                        result_chunk["root_cause_pattern"].astype(str).to_numpy(dtype=object),
-                        return_counts=True,
-                    )
-
-                    for pattern, count in zip(unique_patterns, unique_pattern_counts):
+                    counts = result_chunk["root_cause_pattern"].astype(str).value_counts().to_dict()
+                    for pattern, count in counts.items():
                         pattern_counts[str(pattern)] = (
                             pattern_counts.get(str(pattern), 0) + int(count)
                         )
+
+                model_agreement_sum += float(
+                    pd.to_numeric(
+                        result_chunk["model_agreement_score"],
+                        errors="coerce",
+                    ).fillna(0.0).sum()
+                )
+                confidence_sum += float(
+                    pd.to_numeric(
+                        result_chunk["confidence_score"],
+                        errors="coerce",
+                    ).fillna(0.0).sum()
+                )
+                uncertainty_sum += float(
+                    pd.to_numeric(
+                        result_chunk["uncertainty_score"],
+                        errors="coerce",
+                    ).fillna(0.0).sum()
+                )
+                reliability_sum += float(
+                    pd.to_numeric(
+                        result_chunk["reliability_score"],
+                        errors="coerce",
+                    ).fillna(0.0).sum()
+                )
 
                 print(f"[PROGRESS] Total explanation rows written: {total_rows_written}")
                 print(f"[PROGRESS] Running alert counts: {alert_counts}")
@@ -727,9 +927,25 @@ class ExplanationGenerator:
                     "Final explanation_reports.csv will not be replaced."
                 )
 
+            if confidence_iter is not None:
+                try:
+                    extra_chunk = next(confidence_iter)
+                    if len(extra_chunk) > 0:
+                        raise ValueError(
+                            "confidence_scores.csv has extra rows after "
+                            "health_states.csv ended."
+                        )
+                except StopIteration:
+                    pass
+
             os.replace(temp_output_path, self.output_csv)
 
             duration = perf_counter() - started
+
+            average_model_agreement = model_agreement_sum / max(total_rows_written, 1)
+            average_confidence = confidence_sum / max(total_rows_written, 1)
+            average_uncertainty = uncertainty_sum / max(total_rows_written, 1)
+            average_reliability = reliability_sum / max(total_rows_written, 1)
 
             summary = {
                 "status": "success",
@@ -740,9 +956,23 @@ class ExplanationGenerator:
                 "alert_counts": alert_counts,
                 "health_state_counts": health_state_counts,
                 "root_cause_pattern_counts": pattern_counts,
+                "averages": {
+                    "average_model_agreement_score": float(average_model_agreement),
+                    "average_confidence_score": float(average_confidence),
+                    "average_uncertainty_score": float(average_uncertainty),
+                    "average_reliability_score": float(average_reliability),
+                },
                 "chunk_size": int(self.chunk_size),
+                "chunks_processed": int(chunk_index),
                 "duration_seconds": float(duration),
                 "duration_minutes": float(duration / 60.0),
+                "text_consistency_fix": {
+                    "confidence_text_uses_real_confidence_scores": bool(confidence_available),
+                    "confidence_score_column_written": True,
+                    "uncertainty_score_column_written": True,
+                    "reliability_score_column_written": True,
+                    "model_agreement_score_column_written": True,
+                },
                 "leakage_audit": {
                     "does_not_train_model": True,
                     "does_not_predict_rul": True,
@@ -753,6 +983,9 @@ class ExplanationGenerator:
                     "uses_root_cause_analysis": True,
                     "uses_context_clusters": True,
                     "uses_confidence_scores_if_available": bool(confidence_available),
+                    "full_dataframe_merge_used": False,
+                    "full_csv_read_used": False,
+                    "aligned_chunk_processing": True,
                 },
             }
 
@@ -771,6 +1004,10 @@ class ExplanationGenerator:
             return response
 
         except Exception as exc:
+            if temp_output_path is not None and temp_output_path.exists():
+                print("[PROGRESS] Removing failed temporary explanation reports CSV")
+                temp_output_path.unlink()
+
             print(f"[ERROR] Explanation generator failed: {exc}")
             logger.exception("Explanation generator failed.")
             raise RuntimeError("Explanation generator failed.") from exc
