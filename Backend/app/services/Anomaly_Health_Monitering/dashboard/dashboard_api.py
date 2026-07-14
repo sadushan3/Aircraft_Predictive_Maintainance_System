@@ -274,6 +274,105 @@ class DashboardAPI:
             logger.exception("Confidence API wrapper failed.")
             return self._failed_response(str(exc))
 
+    def get_reports(self) -> Dict[str, object]:
+        """Get generated report content and artifact metadata."""
+        print("[PROGRESS] Entering DashboardAPI.get_reports")
+
+        try:
+            return self._get_service().reports_catalog()
+
+        except Exception as exc:
+            logger.exception("Reports API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_overview(self) -> Dict[str, object]:
+        """Get fast overview aggregates from the dashboard summary report."""
+        print("[PROGRESS] Entering DashboardAPI.get_overview")
+
+        try:
+            return self._get_service().overview_summary()
+
+        except Exception as exc:
+            logger.exception("Dashboard overview API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_all_anomalies(self, limit: int = 500) -> Dict[str, object]:
+        """Get a bounded fleet-wide sample of persisted alerts."""
+        print("[PROGRESS] Entering DashboardAPI.get_all_anomalies")
+
+        try:
+            return self._get_service().anomalies_all(limit=limit)
+
+        except Exception as exc:
+            logger.exception("Fleet-wide anomalies API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_pipeline_status(self) -> Dict[str, object]:
+        """Get pipeline stage status derived from generated artifacts."""
+        print("[PROGRESS] Entering DashboardAPI.get_pipeline_status")
+
+        try:
+            return self._get_service().pipeline_status()
+
+        except Exception as exc:
+            logger.exception("Pipeline status API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_feedback_history(self, limit: int = 500) -> Dict[str, object]:
+        """Get bounded operator feedback history and an alert-memory sample."""
+        print("[PROGRESS] Entering DashboardAPI.get_feedback_history")
+
+        try:
+            return self._get_service().feedback_history(limit=limit)
+
+        except Exception as exc:
+            logger.exception("Feedback history API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_adaptive_thresholds(self) -> Dict[str, object]:
+        """Get the persisted adaptive threshold artifact."""
+        print("[PROGRESS] Entering DashboardAPI.get_adaptive_thresholds")
+
+        try:
+            return self._get_service().adaptive_thresholds()
+
+        except Exception as exc:
+            logger.exception("Adaptive thresholds API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_reasoning_summary(self) -> Dict[str, object]:
+        """Get aggregate reasoning reports."""
+        print("[PROGRESS] Entering DashboardAPI.get_reasoning_summary")
+
+        try:
+            return self._get_service().reasoning_summary()
+
+        except Exception as exc:
+            logger.exception("Reasoning summary API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_explainability_summary(self) -> Dict[str, object]:
+        """Get bounded explainability reports and SHAP rows."""
+        print("[PROGRESS] Entering DashboardAPI.get_explainability_summary")
+
+        try:
+            return self._get_service().explainability_summary()
+
+        except Exception as exc:
+            logger.exception("Explainability summary API wrapper failed.")
+            return self._failed_response(str(exc))
+
+    def get_analytics(self) -> Dict[str, object]:
+        """Get lightweight analytics from existing JSON reports."""
+        print("[PROGRESS] Entering DashboardAPI.get_analytics")
+
+        try:
+            return self._get_service().analytics_summary()
+
+        except Exception as exc:
+            logger.exception("Analytics API wrapper failed.")
+            return self._failed_response(str(exc))
+
 
 def run_dashboard_api_self_check() -> Dict[str, object]:
     """

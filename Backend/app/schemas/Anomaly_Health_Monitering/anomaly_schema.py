@@ -14,3 +14,4 @@ class FeedbackRequest(BaseModel):
     final_anomaly_score: float | None = None
     root_cause_pattern: str | None = None
     feedback_label: str = Field(..., description="accepted_alert, rejected_false_alarm, missed_anomaly, or uncertain")
+    operator_note: str | None = Field(default=None, max_length=2000)
