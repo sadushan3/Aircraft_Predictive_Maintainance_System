@@ -1,0 +1,93 @@
+{
+    "weights": {
+        "rf": 0.5886720393585394,
+        "xgb": 0.18107559547048474,
+        "lgbm": 0.20481170604313875,
+        "mlp": 0.0254406591278371
+    },
+    "dev_rmse": {
+        "rf": 0.005136280882452023,
+        "xgb": 0.0166979152211826,
+        "lgbm": 0.014762754532958501,
+        "mlp": 0.1188485300871357
+    },
+    "target_type": "raw_X_s_only",
+    "fit_split": "dev",
+    "test_usage": "inference_only",
+    "calculation_mode": "chunked_streaming",
+    "chunk_size": 25000,
+    "dev_rows_used": 4906636,
+    "total_rows_scanned": 7641868,
+    "ensemble_members": [
+        "random_forest",
+        "xgboost",
+        "lightgbm",
+        "mlp_digital_twin"
+    ],
+    "prediction_columns": {
+        "rf": [
+            "rf_predicted_Xs_T24",
+            "rf_predicted_Xs_T30",
+            "rf_predicted_Xs_T48",
+            "rf_predicted_Xs_T50",
+            "rf_predicted_Xs_P15",
+            "rf_predicted_Xs_P2",
+            "rf_predicted_Xs_P21",
+            "rf_predicted_Xs_P24",
+            "rf_predicted_Xs_Ps30",
+            "rf_predicted_Xs_P40",
+            "rf_predicted_Xs_P50",
+            "rf_predicted_Xs_Nf",
+            "rf_predicted_Xs_Nc",
+            "rf_predicted_Xs_Wf"
+        ],
+        "xgb": [
+            "xgb_predicted_Xs_T24",
+            "xgb_predicted_Xs_T30",
+            "xgb_predicted_Xs_T48",
+            "xgb_predicted_Xs_T50",
+            "xgb_predicted_Xs_P15",
+            "xgb_predicted_Xs_P2",
+            "xgb_predicted_Xs_P21",
+            "xgb_predicted_Xs_P24",
+            "xgb_predicted_Xs_Ps30",
+            "xgb_predicted_Xs_P40",
+            "xgb_predicted_Xs_P50",
+            "xgb_predicted_Xs_Nf",
+            "xgb_predicted_Xs_Nc",
+            "xgb_predicted_Xs_Wf"
+        ],
+        "lgbm": [
+            "lgbm_predicted_Xs_T24",
+            "lgbm_predicted_Xs_T30",
+            "lgbm_predicted_Xs_T48",
+            "lgbm_predicted_Xs_T50",
+            "lgbm_predicted_Xs_P15",
+            "lgbm_predicted_Xs_P2",
+            "lgbm_predicted_Xs_P21",
+            "lgbm_predicted_Xs_P24",
+            "lgbm_predicted_Xs_Ps30",
+            "lgbm_predicted_Xs_P40",
+            "lgbm_predicted_Xs_P50",
+            "lgbm_predicted_Xs_Nf",
+            "lgbm_predicted_Xs_Nc",
+            "lgbm_predicted_Xs_Wf"
+        ],
+        "mlp": [
+            "tf_predicted_Xs_T24",
+            "tf_predicted_Xs_T30",
+            "tf_predicted_Xs_T48",
+            "tf_predicted_Xs_T50",
+            "tf_predicted_Xs_P15",
+            "tf_predicted_Xs_P2",
+            "tf_predicted_Xs_P21",
+            "tf_predicted_Xs_P24",
+            "tf_predicted_Xs_Ps30",
+            "tf_predicted_Xs_P40",
+            "tf_predicted_Xs_P50",
+            "tf_predicted_Xs_Nf",
+            "tf_predicted_Xs_Nc",
+            "tf_predicted_Xs_Wf"
+        ]
+    }
+}

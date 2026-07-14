@@ -1,0 +1,74 @@
+{
+    "thresholds": {
+        "0": {
+            "watch": 0.14956605434417725,
+            "warning": 0.1839415580034256,
+            "critical": 0.2862164378166199
+        },
+        "1": {
+            "watch": 0.10132964700460434,
+            "warning": 0.1230236291885376,
+            "critical": 0.19007614254951477
+        },
+        "2": {
+            "watch": 0.11383092403411865,
+            "warning": 0.13266359269618988,
+            "critical": 0.17868541181087494
+        },
+        "3": {
+            "watch": 0.1330668330192566,
+            "warning": 0.1612144410610199,
+            "critical": 0.23795835673809052
+        },
+        "4": {
+            "watch": 0.12247762084007263,
+            "warning": 0.14836172759532928,
+            "critical": 0.2212274670600891
+        },
+        "5": {
+            "watch": 0.10685029625892639,
+            "warning": 0.12895552814006805,
+            "critical": 0.1933642327785492
+        },
+        "global": {
+            "watch": 0.1154981479048729,
+            "warning": 0.1406479775905609,
+            "critical": 0.2124224156141281
+        }
+    },
+    "fit_split": "dev",
+    "test_usage": "score_only",
+    "target_type": "raw_X_s_only",
+    "score_input": "sum_abs_residual_raw_X_s",
+    "percentiles": {
+        "watch": 90.0,
+        "warning": 95.0,
+        "critical": 99.0
+    },
+    "dev_rows_used": 4906636,
+    "total_rows_scanned": 7641868,
+    "abs_residual_columns": [
+        "abs_residual_Xs_T24",
+        "abs_residual_Xs_T30",
+        "abs_residual_Xs_T48",
+        "abs_residual_Xs_T50",
+        "abs_residual_Xs_P15",
+        "abs_residual_Xs_P2",
+        "abs_residual_Xs_P21",
+        "abs_residual_Xs_P24",
+        "abs_residual_Xs_Ps30",
+        "abs_residual_Xs_P40",
+        "abs_residual_Xs_P50",
+        "abs_residual_Xs_Nf",
+        "abs_residual_Xs_Nc",
+        "abs_residual_Xs_Wf"
+    ],
+    "context_count": 6,
+    "duration_seconds": 103.51068810001016,
+    "leakage_audit": {
+        "thresholds_fit_on_dev_only": true,
+        "test_rows_used_for_threshold_fitting": 0,
+        "uses_y_targets": false,
+        "uses_t_degradation_as_input": false
+    }
+}

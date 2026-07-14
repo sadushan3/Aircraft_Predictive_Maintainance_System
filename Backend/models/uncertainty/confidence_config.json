@@ -1,0 +1,33 @@
+{
+    "formula": "confidence = w_model*model_agreement_score + w_context*context_confidence + w_persistence*anomaly_persistence_score + w_quality*data_quality_score",
+    "weights": {
+        "model_agreement_score": 0.35,
+        "context_confidence": 0.25,
+        "anomaly_persistence_score": 0.25,
+        "data_quality_score": 0.15
+    },
+    "uncertainty_formula": "uncertainty_score = 1 - confidence_score",
+    "reliability_formula": "reliability_score = 0.50*confidence_score + 0.30*model_agreement_score + 0.20*data_quality_score",
+    "confidence_labels": {
+        "High_Confidence": "confidence_score >= 0.80",
+        "Moderate_Confidence": "0.60 <= confidence_score < 0.80",
+        "Low_Confidence": "0.40 <= confidence_score < 0.60",
+        "Very_Low_Confidence": "confidence_score < 0.40"
+    },
+    "uncertainty_labels": {
+        "High_Uncertainty": "uncertainty_score >= 0.60",
+        "Moderate_Uncertainty": "0.40 <= uncertainty_score < 0.60",
+        "Low_Uncertainty": "0.20 <= uncertainty_score < 0.40",
+        "Very_Low_Uncertainty": "uncertainty_score < 0.20"
+    },
+    "data_quality": {
+        "method": "1 - missing_ratio - infinite_ratio",
+        "excluded_columns": "T_*, Y_*, RUL/rul/target/label columns"
+    },
+    "target_usage": {
+        "uses_y_dev_y_test": false,
+        "uses_t_dev_t_test": false,
+        "predicts_rul": false,
+        "makes_maintenance_decisions": false
+    }
+}

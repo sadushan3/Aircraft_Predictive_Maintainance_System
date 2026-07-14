@@ -1,0 +1,168 @@
+{
+  "model_name": "random_forest_digital_twin_regressor",
+  "model_type": "RandomForestRegressor",
+  "library": "scikit-learn",
+  "feature_columns": [
+    "W_alt",
+    "W_Mach",
+    "W_TRA",
+    "W_T2",
+    "Xv_T40",
+    "Xv_P30",
+    "Xv_P45",
+    "Xv_W21",
+    "Xv_W22",
+    "Xv_W25",
+    "Xv_W31",
+    "Xv_W32",
+    "Xv_W48",
+    "Xv_W50",
+    "Xv_SmFan",
+    "Xv_SmLPC",
+    "Xv_SmHPC",
+    "Xv_phi",
+    "gmm_context_id"
+  ],
+  "target_columns": [
+    "Xs_T24",
+    "Xs_T30",
+    "Xs_T48",
+    "Xs_T50",
+    "Xs_P15",
+    "Xs_P2",
+    "Xs_P21",
+    "Xs_P24",
+    "Xs_Ps30",
+    "Xs_P40",
+    "Xs_P50",
+    "Xs_Nf",
+    "Xs_Nc",
+    "Xs_Wf"
+  ],
+  "prediction_prefix": "rf_predicted_",
+  "target_type": "raw_X_s_only",
+  "input_type": "W_plus_Xv_plus_gmm_context_id",
+  "fit_split": "dev",
+  "test_usage": "predict_only",
+  "training_mode": "full_dev_memmap",
+  "training_rows": 4906636,
+  "total_dev_rows": 4906636,
+  "test_rows": 2735232,
+  "test_rows_used_for_training": 0,
+  "total_rows_available": 7641868,
+  "feature_count": 19,
+  "target_count": 14,
+  "rf_params": {
+    "n_estimators": 120,
+    "max_depth": 18,
+    "min_samples_split": 5,
+    "min_samples_leaf": 2,
+    "random_state": 42,
+    "n_jobs": 2,
+    "verbose": 2
+  },
+  "trained_tree_count": 120,
+  "tree_depth_summary": {
+    "min": 18,
+    "max": 18,
+    "mean": 18.0
+  },
+  "tree_node_summary": {
+    "min": 359373,
+    "max": 364419,
+    "mean": 361954.5
+  },
+  "tree_leaf_summary": {
+    "min": 179687,
+    "max": 182210,
+    "mean": 180977.75
+  },
+  "feature_importances": [
+    {
+      "feature": "Xv_P30",
+      "importance": 0.4983860609421707
+    },
+    {
+      "feature": "W_alt",
+      "importance": 0.18220019552986177
+    },
+    {
+      "feature": "Xv_P45",
+      "importance": 0.1685083439424237
+    },
+    {
+      "feature": "Xv_T40",
+      "importance": 0.06716495188436387
+    },
+    {
+      "feature": "W_TRA",
+      "importance": 0.03888962571878774
+    },
+    {
+      "feature": "Xv_W48",
+      "importance": 0.01594461149745463
+    },
+    {
+      "feature": "Xv_W22",
+      "importance": 0.005610748385888275
+    },
+    {
+      "feature": "Xv_W25",
+      "importance": 0.005585910828397684
+    },
+    {
+      "feature": "Xv_W32",
+      "importance": 0.0055602881462929864
+    },
+    {
+      "feature": "Xv_W31",
+      "importance": 0.005077589894383092
+    },
+    {
+      "feature": "Xv_W21",
+      "importance": 0.0044840503708761525
+    },
+    {
+      "feature": "W_T2",
+      "importance": 0.0009333812019437429
+    },
+    {
+      "feature": "Xv_SmHPC",
+      "importance": 0.00044251578624913463
+    },
+    {
+      "feature": "Xv_phi",
+      "importance": 0.00040051366823303295
+    },
+    {
+      "feature": "Xv_W50",
+      "importance": 0.00029100955810929674
+    },
+    {
+      "feature": "Xv_SmLPC",
+      "importance": 0.0002481573588214299
+    },
+    {
+      "feature": "W_Mach",
+      "importance": 0.00017690843701593096
+    },
+    {
+      "feature": "Xv_SmFan",
+      "importance": 8.740370558027008e-05
+    },
+    {
+      "feature": "gmm_context_id",
+      "importance": 7.73314314674814e-06
+    }
+  ],
+  "fit_duration_seconds": 11238.099468200002,
+  "total_training_duration_seconds": 11249.619157199995,
+  "run_id": "f75947517a6b",
+  "leakage_audit": {
+    "uses_y_targets": false,
+    "uses_t_degradation_as_input": false,
+    "uses_xs_as_input": false,
+    "target_is_raw_xs_only": true,
+    "train_on_test": false
+  }
+}
