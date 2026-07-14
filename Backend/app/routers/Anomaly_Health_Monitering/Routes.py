@@ -24,28 +24,41 @@ Endpoints:
 - /full-pipeline
 
 Important:
-The numbered pipeline modules cannot be imported with normal Python import
-syntax because filenames start with digits. This route file uses service
-classes directly and uses importlib for full pipeline loading.
+- This route file is lightweight.
+- Heavy service classes are imported lazily only when an endpoint runs.
+- Numbered pipeline modules cannot be imported with normal Python syntax
+  because filenames start with digits. This file uses importlib when needed.
+- This component does not predict RUL.
+- This component does not use Y_dev/Y_test.
+- This component does not make final maintenance scheduling decisions.
 """
 
 from __future__ import annotations
 
 print("[PROGRESS] Loaded Backend/app/routers/Anomaly_Health_Monitering/Routes.py")
-import importlib
-import shutil
+
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
+import importlib
+import os
+import shutil
+import sys
 
 from fastapi import APIRouter, File, UploadFile
 
-import os as _os
-import sys as _sys
+
+# ======================================================================================
+# Standalone script support
+# ======================================================================================
 
 if __package__ in {None, ""}:
-    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..'))
-    if _backend_root not in _sys.path:
-        _sys.path.append(_backend_root)
+    BACKEND_ROOT = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..")
+    )
+
+    if BACKEND_ROOT not in sys.path:
+        sys.path.append(BACKEND_ROOT)
+
 
 from app.config.Anomaly_Health_Monitering.config import Config
 from app.schemas.Anomaly_Health_Monitering.anomaly_schema import FeedbackRequest
@@ -54,106 +67,25 @@ from app.schemas.Anomaly_Health_Monitering.common_schema import (
     UnitCycleRequest,
     UnitRequest,
 )
-from app.services.Anomaly_Health_Monitering.Data_Preprocessing.cleaner import DataCleaner
-from app.services.Anomaly_Health_Monitering.Data_Preprocessing.data_loader import DataLoader
-from app.services.Anomaly_Health_Monitering.Data_Preprocessing.feature_engineering import FeatureEngineer
-from app.services.Anomaly_Health_Monitering.Data_Preprocessing.scaler import FeatureScaler
-from app.services.Anomaly_Health_Monitering.anomaly_detection.anomaly_fusion import AnomalyFusion
-from app.services.Anomaly_Health_Monitering.anomaly_detection.early_warning_score import EarlyWarningScore
-from app.services.Anomaly_Health_Monitering.anomaly_detection.isolation_forest_detector import (
-    IsolationForestDetector,
-)
-from app.services.Anomaly_Health_Monitering.anomaly_detection.mahalanobis_detector import (
-    MahalanobisDetector,
-)
-from app.services.Anomaly_Health_Monitering.anomaly_detection.residual_anomaly_detector import (
-    ResidualAnomalyDetector,
-)
-from app.services.Anomaly_Health_Monitering.anomaly_detection.severity_classifier import (
-    SeverityClassifier,
-)
-from app.services.Anomaly_Health_Monitering.context_modeling.context_drift import (
-    ContextDriftDetector,
-)
-from app.services.Anomaly_Health_Monitering.context_modeling.operating_mode_detector import (
-    OperatingModeDetector,
-)
-from app.services.Anomaly_Health_Monitering.dashboard.dashboard_api import DashboardAPI
-from app.services.Anomaly_Health_Monitering.dashboard.dashboard_data_generator import (
-    DashboardDataGenerator,
-)
-from app.services.Anomaly_Health_Monitering.digital_twin.ensemble_twin import EnsembleDigitalTwin
-from app.services.Anomaly_Health_Monitering.digital_twin.lightgbm_twin import LightGBMTwin
-from app.services.Anomaly_Health_Monitering.digital_twin.random_forest_twin import (
-    RandomForestTwin,
-)
-from app.services.Anomaly_Health_Monitering.digital_twin.residual_calculator import (
-    ResidualCalculator,
-)
-from app.services.Anomaly_Health_Monitering.digital_twin.twin_comparator import TwinComparator
-from app.services.Anomaly_Health_Monitering.digital_twin.xgboost_twin import XGBoostTwin
-from app.services.Anomaly_Health_Monitering.evaluation.evaluate_anomaly import AnomalyEvaluator
-from app.services.Anomaly_Health_Monitering.evaluation.evaluate_context import ContextEvaluator
-from app.services.Anomaly_Health_Monitering.evaluation.evaluate_digital_twin import (
-    DigitalTwinEvaluator,
-)
-from app.services.Anomaly_Health_Monitering.evaluation.evaluate_explainability import (
-    ExplainabilityEvaluator,
-)
-from app.services.Anomaly_Health_Monitering.evaluation.evaluate_health import HealthEvaluator
-from app.services.Anomaly_Health_Monitering.evaluation.evaluate_reasoning import (
-    ReasoningEvaluator,
-)
-from app.services.Anomaly_Health_Monitering.explainability.explanation_generator import (
-    ExplanationGenerator,
-)
-from app.services.Anomaly_Health_Monitering.explainability.sensor_residual_ranking import (
-    SensorResidualRanking,
-)
-from app.services.Anomaly_Health_Monitering.explainability.subsystem_explainer import (
-    SubsystemExplainer,
-)
-from app.services.Anomaly_Health_Monitering.feedback.learning_updater import LearningUpdater
-from app.services.Anomaly_Health_Monitering.health_monitoring.health_alert_engine import (
-    HealthAlertEngine,
-)
-from app.services.Anomaly_Health_Monitering.health_monitoring.health_index_calculator import (
-    HealthIndexCalculator,
-)
-from app.services.Anomaly_Health_Monitering.health_monitoring.health_state_classifier import (
-    HealthStateClassifier,
-)
-from app.services.Anomaly_Health_Monitering.health_monitoring.health_trend_tracker import (
-    HealthTrendTracker,
-)
-from app.services.Anomaly_Health_Monitering.reasoning.root_cause_analyzer import (
-    RootCauseAnalyzer,
-)
-from app.services.Anomaly_Health_Monitering.reasoning.root_cause_tracker import (
-    RootCauseTracker,
-)
-from app.services.Anomaly_Health_Monitering.reasoning.sensor_dependency_graph import (
-    SensorDependencyGraph,
-)
-from app.services.Anomaly_Health_Monitering.reasoning.temporal_reasoning import (
-    TemporalReasoning,
-)
-from app.services.Anomaly_Health_Monitering.uncertainty.confidence_estimator import (
-    ConfidenceEstimator,
-)
-from app.services.Anomaly_Health_Monitering.uncertainty.model_agreement import (
-    ModelAgreementCalculator,
-)
 from app.utils.Anomaly_Health_Monitering.logging_utils import get_logger
 from app.utils.Anomaly_Health_Monitering.utils import StageResult, run_stage_safely
 
+
 logger = get_logger(__name__)
+
 
 router = APIRouter(
     prefix="/anomaly-health-monitoring",
     tags=["Anomaly Health Monitoring"],
 )
 
+
+StageSpec = Tuple[str, Callable[[], Dict[str, object]]]
+
+
+# ======================================================================================
+# Response helpers
+# ======================================================================================
 
 def _api_response_from_dict(result: Dict[str, Any]) -> APIResponse:
     """
@@ -165,11 +97,36 @@ def _api_response_from_dict(result: Dict[str, Any]) -> APIResponse:
     Returns:
         APIResponse: Standard API response.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::_api_response_from_dict")
+    print("[PROGRESS] Entering Routes.py::_api_response_from_dict")
+
+    standard_keys = {
+        "status",
+        "message",
+        "output_file",
+        "records_count",
+        "metrics",
+        "errors",
+        "data",
+    }
+
+    data = result.get("data")
+
+    if data is None:
+        extra_data = {
+            key: value
+            for key, value in result.items()
+            if key not in standard_keys and value is not None
+        }
+        data = extra_data if extra_data else None
+
     return APIResponse(
         status=str(result.get("status", "success")),
         message=str(result.get("message", "")),
-        output_file=str(result.get("output_file")) if result.get("output_file") else None,
+        output_file=(
+            str(result.get("output_file"))
+            if result.get("output_file")
+            else None
+        ),
         records_count=(
             int(result["records_count"])
             if result.get("records_count") is not None
@@ -177,7 +134,7 @@ def _api_response_from_dict(result: Dict[str, Any]) -> APIResponse:
         ),
         metrics=result.get("metrics") if isinstance(result.get("metrics"), dict) else None,
         errors=result.get("errors") if isinstance(result.get("errors"), list) else None,
-        data=result.get("data"),
+        data=data,
     )
 
 
@@ -192,8 +149,10 @@ def _failed_response(message: str, exc: Exception) -> APIResponse:
     Returns:
         APIResponse: Failed response.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::_failed_response")
+    print("[PROGRESS] Entering Routes.py::_failed_response")
+
     logger.exception(message)
+
     return APIResponse(
         status="failed",
         message=f"{message}: {exc}",
@@ -211,7 +170,8 @@ def _stage_result_to_dict(stage_result: StageResult) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: Dictionary result.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::_stage_result_to_dict")
+    print("[PROGRESS] Entering Routes.py::_stage_result_to_dict")
+
     return {
         "status": stage_result.status,
         "message": stage_result.message,
@@ -221,6 +181,135 @@ def _stage_result_to_dict(stage_result: StageResult) -> Dict[str, Any]:
     }
 
 
+# ======================================================================================
+# Lazy service helpers
+# ======================================================================================
+
+def _build_service_callable(
+    module_path: str,
+    class_name: str,
+    method_name: str = "run",
+) -> Callable[[], Dict[str, object]]:
+    """
+    Build a lazy service callable.
+
+    This avoids importing and initializing heavy services at FastAPI startup.
+    """
+
+    def _call() -> Dict[str, object]:
+        print(
+            "[PROGRESS] Lazy loading service: "
+            f"{module_path}.{class_name}.{method_name}"
+        )
+
+        module = importlib.import_module(module_path)
+        service_class = getattr(module, class_name)
+        instance = service_class()
+        method = getattr(instance, method_name)
+
+        return method()
+
+    return _call
+
+
+def _stage(
+    stage_name: str,
+    module_path: str,
+    class_name: str,
+    method_name: str = "run",
+) -> StageSpec:
+    """
+    Create a stage spec.
+    """
+    return (
+        stage_name,
+        _build_service_callable(
+            module_path=module_path,
+            class_name=class_name,
+            method_name=method_name,
+        ),
+    )
+
+
+def _run_stage_group(
+    stages: List[StageSpec],
+    success_message: str,
+    stopped_message: str,
+    output_file: Optional[str] = None,
+    extra_data: Optional[Dict[str, Any]] = None,
+) -> APIResponse:
+    """
+    Run a list of stages safely and return APIResponse.
+    """
+    print("[PROGRESS] Entering Routes.py::_run_stage_group")
+
+    completed: List[Dict[str, Any]] = []
+    failed: List[Dict[str, Any]] = []
+
+    for stage_name, stage_function in stages:
+        print("=" * 100)
+        print(f"[PROGRESS] Running API stage: {stage_name}")
+
+        result: StageResult = run_stage_safely(stage_name, stage_function)
+        result_dict = _stage_result_to_dict(result)
+
+        completed.append(result_dict)
+
+        print(f"[PROGRESS] API stage result: {result_dict}")
+
+        if result.status == "failed":
+            failed.append(result_dict)
+            break
+
+    status = "success" if not failed else "partial_failure"
+
+    data: Dict[str, Any] = {
+        "completed_stages": completed,
+        "failed_stages": failed,
+        "target_usage": {
+            "uses_y_dev_y_test": False,
+            "uses_rul_targets": False,
+            "predicts_rul": False,
+        },
+        "decision_boundary": {
+            "makes_maintenance_scheduling_decisions": False,
+        },
+    }
+
+    if extra_data:
+        data.update(extra_data)
+
+    return APIResponse(
+        status=status,
+        message=success_message if status == "success" else stopped_message,
+        output_file=output_file,
+        data=data,
+    )
+
+
+def _run_single_service(
+    module_path: str,
+    class_name: str,
+    method_name: str = "run",
+) -> APIResponse:
+    """
+    Run one service lazily and convert response to APIResponse.
+    """
+    print("[PROGRESS] Entering Routes.py::_run_single_service")
+
+    result = _build_service_callable(
+        module_path=module_path,
+        class_name=class_name,
+        method_name=method_name,
+    )()
+
+    return _api_response_from_dict(result)
+
+
+# ======================================================================================
+# Upload endpoint
+# ======================================================================================
+
 @router.post("/upload", response_model=APIResponse)
 async def upload_dataset(file: UploadFile = File(...)) -> APIResponse:
     """
@@ -229,7 +318,8 @@ async def upload_dataset(file: UploadFile = File(...)) -> APIResponse:
     The uploaded file is saved as:
     Backend/data/Anomaly_Health_Monitering/N-CMAPSS_DS01-005.h5
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::upload_dataset")
+    print("[PROGRESS] Entering Routes.py::upload_dataset")
+
     try:
         Config.create_directories()
 
@@ -240,7 +330,9 @@ async def upload_dataset(file: UploadFile = File(...)) -> APIResponse:
                 errors=["Missing filename."],
             )
 
-        if not file.filename.endswith(".h5"):
+        filename = Path(file.filename).name
+
+        if not filename.lower().endswith(".h5"):
             return APIResponse(
                 status="failed",
                 message="Only .h5 files are accepted.",
@@ -248,9 +340,17 @@ async def upload_dataset(file: UploadFile = File(...)) -> APIResponse:
             )
 
         output_path: Path = Config.H5_FILE_PATH
+        temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
 
-        with output_path.open("wb") as buffer:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if temp_path.exists():
+            temp_path.unlink()
+
+        with temp_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+
+        os.replace(temp_path, output_path)
 
         logger.info("Dataset uploaded to %s.", output_path)
 
@@ -258,11 +358,19 @@ async def upload_dataset(file: UploadFile = File(...)) -> APIResponse:
             status="success",
             message="Dataset uploaded successfully.",
             output_file=str(output_path),
+            data={
+                "stored_filename": output_path.name,
+                "original_filename": filename,
+            },
         )
 
     except Exception as exc:
         return _failed_response("Dataset upload failed", exc)
 
+
+# ======================================================================================
+# Pipeline stage endpoints
+# ======================================================================================
 
 @router.post("/preprocess", response_model=APIResponse)
 def preprocess() -> APIResponse:
@@ -273,41 +381,40 @@ def preprocess() -> APIResponse:
     3. Engineer features
     4. Scale features with dev-only fitting
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::preprocess")
+    print("[PROGRESS] Entering Routes.py::preprocess")
+
     try:
         stages = [
-            ("data_loading", DataLoader().save_raw_data),
-            ("cleaning", DataCleaner().run),
-            ("feature_engineering", FeatureEngineer().run),
-            ("dev_only_scaling", FeatureScaler().run),
+            _stage(
+                "data_loading",
+                "app.services.Anomaly_Health_Monitering.Data_Preprocessing.data_loader",
+                "DataLoader",
+                "save_raw_data",
+            ),
+            _stage(
+                "cleaning",
+                "app.services.Anomaly_Health_Monitering.Data_Preprocessing.cleaner",
+                "DataCleaner",
+            ),
+            _stage(
+                "feature_engineering",
+                "app.services.Anomaly_Health_Monitering.Data_Preprocessing.feature_engineering",
+                "FeatureEngineer",
+            ),
+            _stage(
+                "dev_only_scaling",
+                "app.services.Anomaly_Health_Monitering.Data_Preprocessing.scaler",
+                "FeatureScaler",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Preprocessing completed."
-                if status == "success"
-                else "Preprocessing stopped safely. Previous outputs were not deleted."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Preprocessing completed.",
+            stopped_message="Preprocessing stopped safely. Previous outputs were not deleted.",
             output_file=str(Config.SCALED_CSV) if Config.SCALED_CSV.exists() else None,
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
-                "fit_rule": "Scaler fitted only on dev split.",
+            extra_data={
+                "fit_rule": "Scaler fitted only on dev split and test transformed only.",
             },
         )
 
@@ -326,39 +433,29 @@ def context_modeling() -> APIResponse:
     Inference:
     dev and test.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::context_modeling")
+    print("[PROGRESS] Entering Routes.py::context_modeling")
+
     try:
         stages = [
-            ("operating_mode_detection", OperatingModeDetector().run),
-            ("context_drift_detection", ContextDriftDetector().run),
+            _stage(
+                "operating_mode_detection",
+                "app.services.Anomaly_Health_Monitering.context_modeling.operating_mode_detector",
+                "OperatingModeDetector",
+            ),
+            _stage(
+                "context_drift_detection",
+                "app.services.Anomaly_Health_Monitering.context_modeling.context_drift",
+                "ContextDriftDetector",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Context modeling completed."
-                if status == "success"
-                else "Context modeling stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Context modeling completed.",
+            stopped_message="Context modeling stopped safely.",
             output_file=str(Config.CONTEXT_CSV) if Config.CONTEXT_CSV.exists() else None,
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
-                "fit_rule": "K-Means and GMM fitted only on W_dev.",
+            extra_data={
+                "fit_rule": "K-Means and GMM fitted only on W_dev. Test is prediction/scoring only.",
             },
         )
 
@@ -381,46 +478,49 @@ def train_digital_twin() -> APIResponse:
     Target:
     X_s measured sensor values.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::train_digital_twin")
+    print("[PROGRESS] Entering Routes.py::train_digital_twin")
+
     try:
         stages = [
-            ("random_forest_twin", RandomForestTwin().run),
-            ("xgboost_twin", XGBoostTwin().run),
-            ("lightgbm_twin", LightGBMTwin().run),
-            ("ensemble_twin", EnsembleDigitalTwin().run),
-            ("twin_comparator", TwinComparator().run),
+            _stage(
+                "random_forest_twin",
+                "app.services.Anomaly_Health_Monitering.digital_twin.random_forest_twin",
+                "RandomForestTwin",
+            ),
+            _stage(
+                "xgboost_twin",
+                "app.services.Anomaly_Health_Monitering.digital_twin.xgboost_twin",
+                "XGBoostTwin",
+            ),
+            _stage(
+                "lightgbm_twin",
+                "app.services.Anomaly_Health_Monitering.digital_twin.lightgbm_twin",
+                "LightGBMTwin",
+            ),
+            _stage(
+                "ensemble_twin",
+                "app.services.Anomaly_Health_Monitering.digital_twin.ensemble_twin",
+                "EnsembleDigitalTwin",
+            ),
+            _stage(
+                "twin_comparator",
+                "app.services.Anomaly_Health_Monitering.digital_twin.twin_comparator",
+                "TwinComparator",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Digital twin training and inference completed."
-                if status == "success"
-                else "Digital twin stage stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Digital twin training and inference completed.",
+            stopped_message="Digital twin stage stopped safely.",
             output_file=(
                 str(Config.ENSEMBLE_PREDICTIONS_CSV)
                 if Config.ENSEMBLE_PREDICTIONS_CSV.exists()
                 else None
             ),
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
+            extra_data={
                 "fit_rule": "RF, XGBoost, and LightGBM trained only on dev split.",
+                "target": "Measured X_s sensor values only, not RUL.",
             },
         )
 
@@ -434,10 +534,13 @@ def generate_residuals() -> APIResponse:
     Generate residuals:
     actual X_s - ensemble predicted X_s.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::generate_residuals")
+    print("[PROGRESS] Entering Routes.py::generate_residuals")
+
     try:
-        result = ResidualCalculator().run()
-        return _api_response_from_dict(result)
+        return _run_single_service(
+            module_path="app.services.Anomaly_Health_Monitering.digital_twin.residual_calculator",
+            class_name="ResidualCalculator",
+        )
 
     except Exception as exc:
         return _failed_response("Residual generation failed", exc)
@@ -454,46 +557,52 @@ def detect_anomalies() -> APIResponse:
     5. Severity classification
     6. Early warning score
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::detect_anomalies")
+    print("[PROGRESS] Entering Routes.py::detect_anomalies")
+
     try:
         stages = [
-            ("residual_anomaly_detector", ResidualAnomalyDetector().run),
-            ("isolation_forest_detector", IsolationForestDetector().run),
-            ("mahalanobis_detector", MahalanobisDetector().run),
-            ("anomaly_fusion", AnomalyFusion().run),
-            ("severity_classifier", SeverityClassifier().run),
-            ("early_warning_score", EarlyWarningScore().run),
+            _stage(
+                "residual_anomaly_detector",
+                "app.services.Anomaly_Health_Monitering.anomaly_detection.residual_anomaly_detector",
+                "ResidualAnomalyDetector",
+            ),
+            _stage(
+                "isolation_forest_detector",
+                "app.services.Anomaly_Health_Monitering.anomaly_detection.isolation_forest_detector",
+                "IsolationForestDetector",
+            ),
+            _stage(
+                "mahalanobis_detector",
+                "app.services.Anomaly_Health_Monitering.anomaly_detection.mahalanobis_detector",
+                "MahalanobisDetector",
+            ),
+            _stage(
+                "anomaly_fusion",
+                "app.services.Anomaly_Health_Monitering.anomaly_detection.anomaly_fusion",
+                "AnomalyFusion",
+            ),
+            _stage(
+                "severity_classifier",
+                "app.services.Anomaly_Health_Monitering.anomaly_detection.severity_classifier",
+                "SeverityClassifier",
+            ),
+            _stage(
+                "early_warning_score",
+                "app.services.Anomaly_Health_Monitering.anomaly_detection.early_warning_score",
+                "EarlyWarningScore",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Anomaly detection completed."
-                if status == "success"
-                else "Anomaly detection stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Anomaly detection completed.",
+            stopped_message="Anomaly detection stopped safely.",
             output_file=(
                 str(Config.ANOMALY_FUSION_CSV)
                 if Config.ANOMALY_FUSION_CSV.exists()
                 else None
             ),
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
+            extra_data={
                 "fit_rule": (
                     "Residual thresholds, Isolation Forest, and Mahalanobis "
                     "parameters fitted only on dev residuals."
@@ -512,10 +621,13 @@ def generate_health_index() -> APIResponse:
 
     This endpoint does not predict RUL.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::generate_health_index")
+    print("[PROGRESS] Entering Routes.py::generate_health_index")
+
     try:
-        result = HealthIndexCalculator().run()
-        return _api_response_from_dict(result)
+        return _run_single_service(
+            module_path="app.services.Anomaly_Health_Monitering.health_monitoring.health_index_calculator",
+            class_name="HealthIndexCalculator",
+        )
 
     except Exception as exc:
         return _failed_response("Health index generation failed", exc)
@@ -532,44 +644,42 @@ def generate_health_score() -> APIResponse:
     - health trend
     - health alerts
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::generate_health_score")
+    print("[PROGRESS] Entering Routes.py::generate_health_score")
+
     try:
         stages = [
-            ("health_index", HealthIndexCalculator().run),
-            ("health_state", HealthStateClassifier().run),
-            ("health_trend", HealthTrendTracker().run),
-            ("health_alerts", HealthAlertEngine().run),
+            _stage(
+                "health_index",
+                "app.services.Anomaly_Health_Monitering.health_monitoring.health_index_calculator",
+                "HealthIndexCalculator",
+            ),
+            _stage(
+                "health_state",
+                "app.services.Anomaly_Health_Monitering.health_monitoring.health_state_classifier",
+                "HealthStateClassifier",
+            ),
+            _stage(
+                "health_trend",
+                "app.services.Anomaly_Health_Monitering.health_monitoring.health_trend_tracker",
+                "HealthTrendTracker",
+            ),
+            _stage(
+                "health_alerts",
+                "app.services.Anomaly_Health_Monitering.health_monitoring.health_alert_engine",
+                "HealthAlertEngine",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Health score generation completed."
-                if status == "success"
-                else "Health score generation stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Health score generation completed.",
+            stopped_message="Health score generation stopped safely.",
             output_file=(
                 str(Config.HEALTH_STATES_CSV)
                 if Config.HEALTH_STATES_CSV.exists()
                 else None
             ),
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
+            extra_data={
                 "rul_prediction_used": False,
                 "y_dev_y_test_used": False,
             },
@@ -585,10 +695,13 @@ def classify_health_state() -> APIResponse:
     Classify health state:
     Healthy, Degrading, Warning, Critical.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::classify_health_state")
+    print("[PROGRESS] Entering Routes.py::classify_health_state")
+
     try:
-        result = HealthStateClassifier().run()
-        return _api_response_from_dict(result)
+        return _run_single_service(
+            module_path="app.services.Anomaly_Health_Monitering.health_monitoring.health_state_classifier",
+            class_name="HealthStateClassifier",
+        )
 
     except Exception as exc:
         return _failed_response("Health state classification failed", exc)
@@ -603,40 +716,38 @@ def root_cause_analysis() -> APIResponse:
     3. Root-cause pattern inference
     4. Temporal reasoning
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::root_cause_analysis")
+    print("[PROGRESS] Entering Routes.py::root_cause_analysis")
+
     try:
         stages = [
-            ("sensor_dependency_graph", SensorDependencyGraph().run),
-            ("root_cause_analysis", RootCauseAnalyzer().run),
-            ("root_cause_tracking", RootCauseTracker().run),
-            ("temporal_reasoning", TemporalReasoning().run),
+            _stage(
+                "sensor_dependency_graph",
+                "app.services.Anomaly_Health_Monitering.reasoning.sensor_dependency_graph",
+                "SensorDependencyGraph",
+            ),
+            _stage(
+                "root_cause_analysis",
+                "app.services.Anomaly_Health_Monitering.reasoning.root_cause_analyzer",
+                "RootCauseAnalyzer",
+            ),
+            _stage(
+                "root_cause_tracking",
+                "app.services.Anomaly_Health_Monitering.reasoning.root_cause_tracker",
+                "RootCauseTracker",
+            ),
+            _stage(
+                "temporal_reasoning",
+                "app.services.Anomaly_Health_Monitering.reasoning.temporal_reasoning",
+                "TemporalReasoning",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Root-cause analysis completed."
-                if status == "success"
-                else "Root-cause analysis stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Root-cause analysis completed.",
+            stopped_message="Root-cause analysis stopped safely.",
             output_file=str(Config.ROOT_CAUSE_CSV) if Config.ROOT_CAUSE_CSV.exists() else None,
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
+            extra_data={
                 "decision_boundary": (
                     "This component provides inspection focus only. "
                     "It does not schedule maintenance or make final maintenance decisions."
@@ -656,43 +767,39 @@ def explain() -> APIResponse:
     2. Subsystem explanation
     3. Human-readable explanation reports
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::explain")
+    print("[PROGRESS] Entering Routes.py::explain")
+
     try:
         stages = [
-            ("sensor_residual_ranking", SensorResidualRanking().run),
-            ("subsystem_explainer", SubsystemExplainer().run),
-            ("explanation_generator", ExplanationGenerator().run),
+            _stage(
+                "sensor_residual_ranking",
+                "app.services.Anomaly_Health_Monitering.explainability.sensor_residual_ranking",
+                "SensorResidualRanking",
+            ),
+            _stage(
+                "subsystem_explainer",
+                "app.services.Anomaly_Health_Monitering.explainability.subsystem_explainer",
+                "SubsystemExplainer",
+            ),
+            _stage(
+                "explanation_generator",
+                "app.services.Anomaly_Health_Monitering.explainability.explanation_generator",
+                "ExplanationGenerator",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Explainability reports generated."
-                if status == "success"
-                else "Explainability stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Explainability reports generated.",
+            stopped_message="Explainability stopped safely.",
             output_file=(
                 str(Config.EXPLANATION_REPORTS_CSV)
                 if Config.EXPLANATION_REPORTS_CSV.exists()
                 else None
             ),
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
+            extra_data={
+                "hard_causality_claim": False,
+                "maintenance_decision": False,
             },
         )
 
@@ -705,50 +812,46 @@ def confidence() -> APIResponse:
     """
     Generate model agreement, confidence, reliability, and uncertainty scores.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::confidence")
+    print("[PROGRESS] Entering Routes.py::confidence")
+
     try:
         stages = [
-            ("model_agreement", ModelAgreementCalculator().run),
-            ("confidence_estimation", ConfidenceEstimator().run),
+            _stage(
+                "model_agreement",
+                "app.services.Anomaly_Health_Monitering.uncertainty.model_agreement",
+                "ModelAgreementCalculator",
+            ),
+            _stage(
+                "confidence_estimation",
+                "app.services.Anomaly_Health_Monitering.uncertainty.confidence_estimator",
+                "ConfidenceEstimator",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Confidence and uncertainty calculation completed."
-                if status == "success"
-                else "Confidence calculation stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Confidence and uncertainty calculation completed.",
+            stopped_message="Confidence calculation stopped safely.",
             output_file=str(Config.CONFIDENCE_CSV) if Config.CONFIDENCE_CSV.exists() else None,
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
+            extra_data={
                 "formula": (
                     "confidence = 0.35*model_agreement_score + "
                     "0.25*context_confidence + "
                     "0.25*anomaly_persistence_score + "
                     "0.15*data_quality_score"
                 ),
+                "model_agreement_normalization_fit_split": Config.DEV_SPLIT_NAME,
+                "test_split_used_for_normalization": False,
             },
         )
 
     except Exception as exc:
         return _failed_response("Confidence estimation failed", exc)
 
+
+# ======================================================================================
+# Feedback endpoints
+# ======================================================================================
 
 @router.post("/feedback", response_model=APIResponse)
 def feedback(request: FeedbackRequest) -> APIResponse:
@@ -761,9 +864,16 @@ def feedback(request: FeedbackRequest) -> APIResponse:
     - missed_anomaly
     - uncertain
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::feedback")
+    print("[PROGRESS] Entering Routes.py::feedback")
+
     try:
-        result = LearningUpdater().submit_feedback(
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.feedback.learning_updater"
+        )
+        learning_updater_class = getattr(module, "LearningUpdater")
+        updater = learning_updater_class()
+
+        result = updater.submit_feedback(
             unit_id=request.unit_id,
             cycle=request.cycle,
             context_id=request.context_id,
@@ -771,23 +881,31 @@ def feedback(request: FeedbackRequest) -> APIResponse:
             final_anomaly_score=request.final_anomaly_score,
             root_cause_pattern=request.root_cause_pattern,
             feedback_label=request.feedback_label,
-            operator_note=None,
+            operator_note=getattr(request, "operator_note", None),
         )
+
         return _api_response_from_dict(result)
 
     except Exception as exc:
         return _failed_response("Feedback update failed", exc)
 
 
+# ======================================================================================
+# Dashboard endpoints
+# ======================================================================================
+
 @router.post("/dashboard", response_model=APIResponse)
 def dashboard() -> APIResponse:
     """
     Generate dashboard_data.csv.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard")
+    print("[PROGRESS] Entering Routes.py::dashboard")
+
     try:
-        result = DashboardDataGenerator().run()
-        return _api_response_from_dict(result)
+        return _run_single_service(
+            module_path="app.services.Anomaly_Health_Monitering.dashboard.dashboard_data_generator",
+            class_name="DashboardDataGenerator",
+        )
 
     except Exception as exc:
         return _failed_response("Dashboard generation failed", exc)
@@ -798,9 +916,14 @@ def dashboard_summary() -> APIResponse:
     """
     Return dashboard summary counts.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_summary")
+    print("[PROGRESS] Entering Routes.py::dashboard_summary")
+
     try:
-        result = DashboardAPI().get_summary()
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_summary()
         return _api_response_from_dict(result)
 
     except Exception as exc:
@@ -812,9 +935,14 @@ def dashboard_latest_all() -> APIResponse:
     """
     Return latest health for all units.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_latest_all")
+    print("[PROGRESS] Entering Routes.py::dashboard_latest_all")
+
     try:
-        result = DashboardAPI().get_latest_all_units()
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_latest_all_units()
         return _api_response_from_dict(result)
 
     except Exception as exc:
@@ -826,9 +954,14 @@ def dashboard_latest_unit(request: UnitRequest) -> APIResponse:
     """
     Return latest health for one unit.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_latest_unit")
+    print("[PROGRESS] Entering Routes.py::dashboard_latest_unit")
+
     try:
-        result = DashboardAPI().get_latest_unit_health(request.unit_id)
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_latest_unit_health(request.unit_id)
         return _api_response_from_dict(result)
 
     except Exception as exc:
@@ -840,9 +973,14 @@ def dashboard_health_trend(request: UnitRequest) -> APIResponse:
     """
     Return health trend for one unit.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_health_trend")
+    print("[PROGRESS] Entering Routes.py::dashboard_health_trend")
+
     try:
-        result = DashboardAPI().get_health_trend(request.unit_id)
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_health_trend(request.unit_id)
         return _api_response_from_dict(result)
 
     except Exception as exc:
@@ -854,9 +992,14 @@ def dashboard_anomalies(request: UnitRequest) -> APIResponse:
     """
     Return anomalies for one unit.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_anomalies")
+    print("[PROGRESS] Entering Routes.py::dashboard_anomalies")
+
     try:
-        result = DashboardAPI().get_anomalies(request.unit_id)
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_anomalies(request.unit_id)
         return _api_response_from_dict(result)
 
     except Exception as exc:
@@ -868,9 +1011,14 @@ def dashboard_explanation(request: UnitCycleRequest) -> APIResponse:
     """
     Return explanation for one unit and cycle.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_explanation")
+    print("[PROGRESS] Entering Routes.py::dashboard_explanation")
+
     try:
-        result = DashboardAPI().get_explanation(
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_explanation(
             unit_id=request.unit_id,
             cycle=request.cycle,
         )
@@ -885,14 +1033,23 @@ def dashboard_confidence(request: UnitRequest) -> APIResponse:
     """
     Return confidence and uncertainty trend for one unit.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::dashboard_confidence")
+    print("[PROGRESS] Entering Routes.py::dashboard_confidence")
+
     try:
-        result = DashboardAPI().get_confidence_uncertainty(request.unit_id)
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_confidence_uncertainty(request.unit_id)
         return _api_response_from_dict(result)
 
     except Exception as exc:
         return _failed_response("Dashboard confidence query failed", exc)
 
+
+# ======================================================================================
+# Evaluation endpoint
+# ======================================================================================
 
 @router.post("/evaluate", response_model=APIResponse)
 def evaluate() -> APIResponse:
@@ -905,43 +1062,50 @@ def evaluate() -> APIResponse:
     - reasoning
     - explainability
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::evaluate")
+    print("[PROGRESS] Entering Routes.py::evaluate")
+
     try:
         stages = [
-            ("evaluate_digital_twin", DigitalTwinEvaluator().run),
-            ("evaluate_context", ContextEvaluator().run),
-            ("evaluate_anomaly", AnomalyEvaluator().run),
-            ("evaluate_health", HealthEvaluator().run),
-            ("evaluate_reasoning", ReasoningEvaluator().run),
-            ("evaluate_explainability", ExplainabilityEvaluator().run),
+            _stage(
+                "evaluate_digital_twin",
+                "app.services.Anomaly_Health_Monitering.evaluation.evaluate_digital_twin",
+                "DigitalTwinEvaluator",
+            ),
+            _stage(
+                "evaluate_context",
+                "app.services.Anomaly_Health_Monitering.evaluation.evaluate_context",
+                "ContextEvaluator",
+            ),
+            _stage(
+                "evaluate_anomaly",
+                "app.services.Anomaly_Health_Monitering.evaluation.evaluate_anomaly",
+                "AnomalyEvaluator",
+            ),
+            _stage(
+                "evaluate_health",
+                "app.services.Anomaly_Health_Monitering.evaluation.evaluate_health",
+                "HealthEvaluator",
+            ),
+            _stage(
+                "evaluate_reasoning",
+                "app.services.Anomaly_Health_Monitering.evaluation.evaluate_reasoning",
+                "ReasoningEvaluator",
+            ),
+            _stage(
+                "evaluate_explainability",
+                "app.services.Anomaly_Health_Monitering.evaluation.evaluate_explainability",
+                "ExplainabilityEvaluator",
+            ),
         ]
 
-        completed: List[Dict[str, Any]] = []
-        failed: List[Dict[str, Any]] = []
-
-        for stage_name, stage_function in stages:
-            result = run_stage_safely(stage_name, stage_function)
-            result_dict = _stage_result_to_dict(result)
-            completed.append(result_dict)
-
-            if result.status == "failed":
-                failed.append(result_dict)
-                break
-
-        status = "success" if not failed else "partial_failure"
-
-        return APIResponse(
-            status=status,
-            message=(
-                "Evaluation completed."
-                if status == "success"
-                else "Evaluation stopped safely."
-            ),
+        return _run_stage_group(
+            stages=stages,
+            success_message="Evaluation completed.",
+            stopped_message="Evaluation stopped safely.",
             output_file=str(Config.METRIC_DIR),
-            data={
-                "completed_stages": completed,
-                "failed_stages": failed,
+            extra_data={
                 "uses_y_targets": False,
+                "evaluation_mode": "label-free component evaluation unless external anomaly labels are provided.",
             },
         )
 
@@ -949,20 +1113,40 @@ def evaluate() -> APIResponse:
         return _failed_response("Evaluation failed", exc)
 
 
+# ======================================================================================
+# Full pipeline endpoint
+# ======================================================================================
+
 @router.post("/full-pipeline", response_model=APIResponse)
-def full_pipeline(include_shap: bool = False) -> APIResponse:
+def full_pipeline(
+    include_shap: bool = False,
+    include_evaluation: bool = True,
+    include_dashboard: bool = True,
+    include_feedback: bool = True,
+    include_context_drift: bool = True,
+    include_twin_comparison: bool = True,
+) -> APIResponse:
     """
     Run the full CA-EDT-AHMA pipeline safely.
 
     If one stage fails, previously generated files are not deleted.
     """
-    print("[PROGRESS] Entering Backend/app/routers/Anomaly_Health_Monitering/Routes.py::full_pipeline")
+    print("[PROGRESS] Entering Routes.py::full_pipeline")
+
     try:
         module = importlib.import_module(
             "app.pipeline.Anomaly_Health_Monitering.11_full_pipeline"
         )
         run_full_pipeline = getattr(module, "run_full_pipeline")
-        result: Dict[str, Any] = run_full_pipeline(include_shap=include_shap)
+
+        result: Dict[str, Any] = run_full_pipeline(
+            include_shap=include_shap,
+            include_evaluation=include_evaluation,
+            include_dashboard=include_dashboard,
+            include_feedback=include_feedback,
+            include_context_drift=include_context_drift,
+            include_twin_comparison=include_twin_comparison,
+        )
 
         return APIResponse(
             status=str(result.get("status", "success")),
