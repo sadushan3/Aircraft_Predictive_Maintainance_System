@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+egg-info/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment files
+.env
+.env.*
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Project artifacts
+artifacts/**
+outputs/**
+processed/**
+metrics/**
+reports/**
+Backend/artifacts/**
+Backend/outputs/**
+Backend/processed/**
+Backend/metrics/**
+Backend/reports/**
+Backend/models/**/*.pkl
+Backend/models/**/*.joblib
+Backend/models/**/*.keras
+Backend/models/**/*.memmap
+*.pkl
+*.joblib
+*.keras
+*.memmap
+*.h5
+*.pt
+*.onnx
+
+# Node / Frontend
+node_modules/
+Frontend/dist/
+Frontend/build/
+Frontend/.vite/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/

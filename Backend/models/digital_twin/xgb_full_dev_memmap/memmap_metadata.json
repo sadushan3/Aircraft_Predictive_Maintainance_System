@@ -1,0 +1,54 @@
+{
+  "run_id": "59f640cbf342",
+  "training_mode": "full_dev_memmap",
+  "expected_dev_rows": 4906636,
+  "written_dev_rows": 4906636,
+  "feature_columns": [
+    "W_alt",
+    "W_Mach",
+    "W_TRA",
+    "W_T2",
+    "Xv_T40",
+    "Xv_P30",
+    "Xv_P45",
+    "Xv_W21",
+    "Xv_W22",
+    "Xv_W25",
+    "Xv_W31",
+    "Xv_W32",
+    "Xv_W48",
+    "Xv_W50",
+    "Xv_SmFan",
+    "Xv_SmLPC",
+    "Xv_SmHPC",
+    "Xv_phi",
+    "gmm_context_id"
+  ],
+  "target_columns": [
+    "Xs_T24",
+    "Xs_T30",
+    "Xs_T48",
+    "Xs_T50",
+    "Xs_P15",
+    "Xs_P2",
+    "Xs_P21",
+    "Xs_P24",
+    "Xs_Ps30",
+    "Xs_P40",
+    "Xs_P50",
+    "Xs_Nf",
+    "Xs_Nc",
+    "Xs_Wf"
+  ],
+  "x_shape": [
+    4906636,
+    19
+  ],
+  "y_shape": [
+    4906636,
+    14
+  ],
+  "x_path": "D:\\Aircraft_Predictive_Maintainance_System\\Backend\\models\\digital_twin\\xgb_full_dev_memmap\\X_dev_full.float32.memmap",
+  "y_path": "D:\\Aircraft_Predictive_Maintainance_System\\Backend\\models\\digital_twin\\xgb_full_dev_memmap\\y_dev_full.float32.memmap",
+  "duration_seconds": 112.77751789998729
+}

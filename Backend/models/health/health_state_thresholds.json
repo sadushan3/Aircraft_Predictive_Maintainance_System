@@ -1,0 +1,22 @@
+{
+    "Healthy": {
+        "min": 85.0,
+        "max": 100.0
+    },
+    "Degrading": {
+        "min": 65.0,
+        "max": 84.999999
+    },
+    "Warning": {
+        "min": 40.0,
+        "max": 64.999999
+    },
+    "Critical": {
+        "min": 0.0,
+        "max": 39.999999
+    },
+    "higher_is_healthier": true,
+    "rul_prediction": false,
+    "uses_y_targets": false,
+    "uses_t_targets": false
+}
