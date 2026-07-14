@@ -30,8 +30,10 @@ print(
     "dashboard/dashboard_service.py"
 )
 
+from collections import deque
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Deque, Tuple
 import gc
 import json
 import math
@@ -198,6 +200,72 @@ class DashboardService:
             return bool(value)
 
         return value
+
+    def _file_metadata(self, path: Path) -> Dict[str, object]:
+        """Return JSON-safe metadata for an existing artifact."""
+        stat = path.stat()
+        return {
+            "name": path.name,
+            "extension": path.suffix.lower().lstrip("."),
+            "size_bytes": int(stat.st_size),
+            "updated_at": datetime.fromtimestamp(
+                stat.st_mtime,
+                tz=timezone.utc,
+            ).isoformat(),
+        }
+
+    def _read_json_artifact(
+        self,
+        path: Path,
+        max_bytes: int = 1_000_000,
+    ) -> Tuple[Optional[Any], Optional[str]]:
+        """
+        Read one bounded JSON artifact.
+
+        Returns the parsed payload and an optional reason when content is not
+        available. The size guard prevents a dashboard request from loading an
+        unexpectedly large file into memory.
+        """
+        if not path.exists() or not path.is_file():
+            return None, "not_found"
+
+        if path.stat().st_size > max_bytes:
+            return None, "content_too_large"
+
+        try:
+            with path.open("r", encoding="utf-8") as handle:
+                return json.load(handle), None
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning("Unable to read JSON artifact %s: %s", path, exc)
+            return None, "invalid_json"
+
+    def _report_entry(
+        self,
+        path: Path,
+        include_content: bool = True,
+        max_bytes: int = 1_000_000,
+    ) -> Dict[str, object]:
+        """Build one report catalog entry from a real JSON report file."""
+        entry = self._file_metadata(path)
+        content, content_error = self._read_json_artifact(path, max_bytes=max_bytes)
+
+        if isinstance(content, dict):
+            entry["status"] = str(content.get("status", "available"))
+            if content.get("message") is not None:
+                entry["message"] = str(content["message"])
+            if content.get("records_count") is not None:
+                try:
+                    entry["records_count"] = int(content["records_count"])
+                except (TypeError, ValueError):
+                    pass
+        else:
+            entry["status"] = "available" if content_error is None else content_error
+
+        if include_content:
+            entry["content"] = content
+            entry["content_status"] = "loaded" if content_error is None else content_error
+
+        return entry
 
     def _records_from_df(self, df: pd.DataFrame) -> List[Dict[str, object]]:
         """
@@ -583,13 +651,97 @@ class DashboardService:
 
     def summary_counts(self) -> Dict[str, object]:
         """
-        Return dashboard summary counts using chunk scan.
+        Return dashboard summary counts.
 
-        This avoids loading full dashboard_data.csv.
+        The generated dashboard summary JSON is preferred so normal page loads
+        do not rescan the multi-gigabyte dashboard CSV. The existing chunk scan
+        remains a fallback when no valid cached summary exists.
         """
         print("[PROGRESS] Entering DashboardService.summary_counts")
 
         try:
+            cached_summary, cached_error = self._read_json_artifact(self.summary_json)
+            if cached_error is None and isinstance(cached_summary, dict):
+                raw_alert_counts = cached_summary.get("alert_counts")
+                raw_health_counts = cached_summary.get("health_state_counts")
+                raw_averages = cached_summary.get("averages")
+                raw_anomaly_summary = cached_summary.get("anomaly_summary")
+                raw_total_records = cached_summary.get(
+                    "records_count",
+                    cached_summary.get("expected_rows"),
+                )
+
+                if (
+                    isinstance(raw_alert_counts, dict)
+                    and isinstance(raw_health_counts, dict)
+                    and isinstance(raw_averages, dict)
+                    and isinstance(raw_anomaly_summary, dict)
+                    and raw_total_records is not None
+                ):
+                    alert_counts_by_label = {
+                        str(key).lower(): int(value)
+                        for key, value in raw_alert_counts.items()
+                    }
+                    health_counts_by_label = {
+                        str(key).lower(): int(value)
+                        for key, value in raw_health_counts.items()
+                    }
+                    total_records = int(raw_total_records)
+
+                    data = {
+                        "alert_counts": {
+                            "normal": int(alert_counts_by_label.get("normal", 0)),
+                            "watch": int(alert_counts_by_label.get("watch", 0)),
+                            "warning": int(alert_counts_by_label.get("warning", 0)),
+                            "critical": int(alert_counts_by_label.get("critical", 0)),
+                        },
+                        "anomaly_summary": raw_anomaly_summary,
+                        "health_state_counts": {
+                            "healthy": int(health_counts_by_label.get("healthy", 0)),
+                            "degrading": int(health_counts_by_label.get("degrading", 0)),
+                            "warning": int(health_counts_by_label.get("warning", 0)),
+                            "critical": int(health_counts_by_label.get("critical", 0)),
+                        },
+                        "total_records": total_records,
+                        "unique_units": (
+                            int(cached_summary["unique_units"])
+                            if cached_summary.get("unique_units") is not None
+                            else None
+                        ),
+                        "average_health_index": float(
+                            raw_averages["average_health_index"]
+                        ) if raw_averages.get("average_health_index") is not None else None,
+                        "average_confidence_score": (
+                            float(raw_averages["average_confidence_score"])
+                            if raw_averages.get("average_confidence_score") is not None
+                            else None
+                        ),
+                        "average_uncertainty_score": (
+                            float(raw_averages["average_uncertainty_score"])
+                            if raw_averages.get("average_uncertainty_score") is not None
+                            else None
+                        ),
+                        "average_reliability_score": (
+                            float(raw_averages["average_reliability_score"])
+                            if raw_averages.get("average_reliability_score") is not None
+                            else None
+                        ),
+                        "source": {
+                            "type": "generated_summary_cache",
+                            **self._file_metadata(self.summary_json),
+                        },
+                    }
+
+                    return {
+                        "status": "success",
+                        "message": (
+                            "Dashboard summary counts returned from the generated "
+                            "summary cache; unique_units is null when not recorded "
+                            "by that artifact."
+                        ),
+                        "data": data,
+                    }
+
             requested_columns = [
                 "unit_id",
                 "alert_level",
@@ -629,16 +781,32 @@ class DashboardService:
                         health_counts[label] = health_counts.get(label, 0) + int(count)
 
                 if "health_index" in chunk.columns:
-                    health_sum += float(pd.to_numeric(chunk["health_index"], errors="coerce").fillna(0.0).sum())
+                    health_sum += float(
+                        pd.to_numeric(chunk["health_index"], errors="coerce")
+                        .fillna(0.0)
+                        .sum()
+                    )
 
                 if "confidence_score" in chunk.columns:
-                    confidence_sum += float(pd.to_numeric(chunk["confidence_score"], errors="coerce").fillna(0.0).sum())
+                    confidence_sum += float(
+                        pd.to_numeric(chunk["confidence_score"], errors="coerce")
+                        .fillna(0.0)
+                        .sum()
+                    )
 
                 if "uncertainty_score" in chunk.columns:
-                    uncertainty_sum += float(pd.to_numeric(chunk["uncertainty_score"], errors="coerce").fillna(0.0).sum())
+                    uncertainty_sum += float(
+                        pd.to_numeric(chunk["uncertainty_score"], errors="coerce")
+                        .fillna(0.0)
+                        .sum()
+                    )
 
                 if "reliability_score" in chunk.columns:
-                    reliability_sum += float(pd.to_numeric(chunk["reliability_score"], errors="coerce").fillna(0.0).sum())
+                    reliability_sum += float(
+                        pd.to_numeric(chunk["reliability_score"], errors="coerce")
+                        .fillna(0.0)
+                        .sum()
+                    )
 
                 del chunk
                 gc.collect()
@@ -738,6 +906,795 @@ class DashboardService:
         except Exception as exc:
             logger.exception("Latest all units query failed.")
             return self._failed_response(str(exc), data=[], records_count=0)
+
+    def reports_catalog(self) -> Dict[str, object]:
+        """
+        Return bounded report content and metadata for generated artifacts.
+
+        JSON report payloads are parsed from ``Config.REPORT_DIR``. Output and
+        metric files are represented by metadata only; large CSV files are
+        never opened by this method.
+        """
+        print("[PROGRESS] Entering DashboardService.reports_catalog")
+
+        try:
+            max_report_files = 100
+            max_metadata_files = 250
+            max_report_bytes = 1_000_000
+            max_catalog_content_bytes = 5_000_000
+
+            report_paths = sorted(
+                (
+                    path
+                    for path in Config.REPORT_DIR.glob("*.json")
+                    if path.is_file()
+                ),
+                key=lambda path: path.name.lower(),
+            )
+
+            reports: List[Dict[str, object]] = []
+            indexed_record_counts: Dict[str, int] = {}
+            content_bytes_used = 0
+
+            for path in report_paths[:max_report_files]:
+                size_bytes = int(path.stat().st_size)
+                include_content = (
+                    size_bytes <= max_report_bytes
+                    and content_bytes_used + size_bytes <= max_catalog_content_bytes
+                )
+                entry = self._report_entry(
+                    path,
+                    include_content=include_content,
+                    max_bytes=max_report_bytes,
+                )
+
+                if include_content:
+                    content_bytes_used += size_bytes
+                else:
+                    entry["content"] = None
+                    entry["content_status"] = "catalog_size_limit"
+
+                content = entry.get("content")
+                if isinstance(content, dict):
+                    output_file = content.get("output_file")
+                    records_count = content.get("records_count")
+                    if output_file and records_count is not None:
+                        try:
+                            indexed_record_counts[Path(str(output_file)).name] = int(records_count)
+                        except (TypeError, ValueError):
+                            pass
+
+                reports.append(entry)
+
+            def metadata_entries(
+                directory: Path,
+            ) -> Tuple[List[Dict[str, object]], int]:
+                if not directory.exists():
+                    return [], 0
+
+                paths = sorted(
+                    (
+                        path
+                        for path in directory.iterdir()
+                        if path.is_file()
+                        and path.suffix.lower() in {".csv", ".json", ".parquet"}
+                    ),
+                    key=lambda path: path.name.lower(),
+                )
+                entries: List[Dict[str, object]] = []
+                for path in paths[:max_metadata_files]:
+                    entry = self._file_metadata(path)
+                    if path.name in indexed_record_counts:
+                        entry["records_count"] = indexed_record_counts[path.name]
+                    entries.append(entry)
+                return entries, len(paths)
+
+            output_files, total_output_files = metadata_entries(Config.OUTPUT_DIR)
+            metric_files, total_metric_files = metadata_entries(Config.METRIC_DIR)
+
+            total_files = len(report_paths) + total_output_files + total_metric_files
+            return {
+                "status": "success",
+                "message": "Generated report and artifact catalog returned.",
+                "records_count": int(total_files),
+                "data": {
+                    "reports": reports,
+                    "output_files": output_files,
+                    "metric_files": metric_files,
+                    "report_count": int(len(reports)),
+                    "output_file_count": int(len(output_files)),
+                    "metric_file_count": int(len(metric_files)),
+                    "truncated": bool(
+                        len(report_paths) > max_report_files
+                        or total_output_files > max_metadata_files
+                        or total_metric_files > max_metadata_files
+                    ),
+                },
+            }
+
+        except Exception as exc:
+            logger.exception("Report catalog query failed.")
+            return self._failed_response(
+                str(exc),
+                data={"reports": [], "output_files": [], "metric_files": []},
+                records_count=0,
+            )
+
+    def overview_summary(self) -> Dict[str, object]:
+        """Return fast overview aggregates from the generated dashboard report."""
+        print("[PROGRESS] Entering DashboardService.overview_summary")
+
+        try:
+            if not self.summary_json.exists() or not self.summary_json.is_file():
+                return {
+                    "status": "not_found",
+                    "message": "No dashboard summary report is available.",
+                    "data": None,
+                }
+
+            content, content_error = self._read_json_artifact(self.summary_json)
+            if content_error is not None or not isinstance(content, dict):
+                return self._failed_response(
+                    f"Dashboard summary report could not be loaded: {content_error or 'invalid_content'}",
+                    data=None,
+                )
+
+            raw_alert_counts = content.get("alert_counts", {})
+            alert_counts = (
+                {str(key).lower(): int(value) for key, value in raw_alert_counts.items()}
+                if isinstance(raw_alert_counts, dict)
+                else {}
+            )
+            raw_health_counts = content.get("health_state_counts", {})
+            health_state_counts = (
+                {str(key).lower(): int(value) for key, value in raw_health_counts.items()}
+                if isinstance(raw_health_counts, dict)
+                else {}
+            )
+
+            aggregates: Dict[str, object] = {
+                "alert_counts": alert_counts,
+                "health_state_counts": health_state_counts,
+            }
+            direct_fields = [
+                "records_count",
+                "expected_rows",
+                "anomaly_summary",
+                "averages",
+                "split_counts",
+                "feedback_counts",
+            ]
+            for field in direct_fields:
+                if field in content:
+                    aggregates[field] = content[field]
+
+            report_records = content.get("records_count")
+            return {
+                "status": "success",
+                "message": "Dashboard overview aggregates returned from the generated summary.",
+                "records_count": (
+                    int(report_records)
+                    if report_records is not None
+                    else None
+                ),
+                "data": {
+                    "aggregates": aggregates,
+                    "source": self._file_metadata(self.summary_json),
+                    "summary": content,
+                },
+            }
+
+        except Exception as exc:
+            logger.exception("Dashboard overview query failed.")
+            return self._failed_response(str(exc), data=None)
+
+    def anomalies_all(self, limit: int = 500) -> Dict[str, object]:
+        """Return a bounded fleet-wide sample from persisted alert memory."""
+        print("[PROGRESS] Entering DashboardService.anomalies_all")
+
+        try:
+            safe_limit = max(1, min(int(limit), self.max_records))
+            path = Config.ALERT_MEMORY_CSV
+            if not path.exists() or not path.is_file():
+                return {
+                    "status": "not_found",
+                    "message": "No alert-memory artifact is available.",
+                    "records_count": 0,
+                    "data": [],
+                }
+
+            available_columns = list(pd.read_csv(path, nrows=0).columns)
+            requested_columns = [
+                "unit_id",
+                "cycle",
+                "split",
+                "context_id",
+                "alert_level",
+                "final_anomaly_score",
+                "root_cause_pattern",
+                "top_sensor_1",
+                "top_sensor_2",
+                "top_sensor_3",
+                "feedback_status",
+            ]
+            usecols = [
+                column
+                for column in requested_columns
+                if column in available_columns
+            ]
+            if not usecols:
+                raise KeyError("alert_memory.csv contains none of the dashboard alert columns.")
+
+            sample_df = pd.read_csv(
+                path,
+                usecols=usecols,
+                nrows=safe_limit,
+                low_memory=False,
+            )
+            data = self._records_from_df(sample_df)
+
+            total_records: Optional[int] = None
+            alert_summary_path = Config.REPORT_DIR / "alert_memory_summary.json"
+            summary, _ = self._read_json_artifact(alert_summary_path)
+            if isinstance(summary, dict) and summary.get("records_count") is not None:
+                try:
+                    total_records = int(summary["records_count"])
+                except (TypeError, ValueError):
+                    total_records = None
+
+            response: Dict[str, object] = {
+                "status": "success",
+                "message": "Fleet-wide alert-memory sample returned.",
+                "records_count": int(len(data)),
+                "metrics": {
+                    "max_records": int(safe_limit),
+                    "sampling": "first_rows_in_persisted_alert_memory",
+                },
+                "data": data,
+            }
+            if total_records is not None:
+                metrics = response["metrics"]
+                if isinstance(metrics, dict):
+                    metrics["total_matching_records"] = total_records
+                    metrics["truncated"] = bool(total_records > len(data))
+            return response
+
+        except pd.errors.EmptyDataError:
+            return {
+                "status": "success",
+                "message": "Alert memory is empty.",
+                "records_count": 0,
+                "data": [],
+            }
+        except Exception as exc:
+            logger.exception("Fleet-wide anomaly query failed.")
+            return self._failed_response(str(exc), data=[], records_count=0)
+
+    def pipeline_status(self) -> Dict[str, object]:
+        """
+        Return broad pipeline stage status derived from real artifacts.
+
+        A stage is reported as ``success`` only when a successful report or its
+        primary output exists. A failed report takes precedence when it is the
+        newest report for that stage. No in-memory or fabricated run state is
+        used.
+        """
+        print("[PROGRESS] Entering DashboardService.pipeline_status")
+
+        try:
+            report_dir = Config.REPORT_DIR
+            stages = [
+                {
+                    "id": "preprocessing",
+                    "name": "Data preprocessing",
+                    "primary": Config.SCALED_CSV,
+                    "artifacts": [Config.RAW_CSV, Config.CLEANED_CSV, Config.ENGINEERED_CSV, Config.SCALED_CSV],
+                    "reports": [],
+                },
+                {
+                    "id": "context_modeling",
+                    "name": "Context modeling",
+                    "primary": Config.CONTEXT_CSV,
+                    "artifacts": [Config.CONTEXT_CSV, Config.CONTEXT_DRIFT_CSV],
+                    "reports": [report_dir / "evaluate_context_summary.json"],
+                },
+                {
+                    "id": "digital_twin",
+                    "name": "Digital twin",
+                    "primary": Config.ENSEMBLE_PREDICTIONS_CSV,
+                    "artifacts": [
+                        Config.RF_PREDICTIONS_CSV,
+                        Config.XGB_PREDICTIONS_CSV,
+                        Config.LGBM_PREDICTIONS_CSV,
+                        Config.ENSEMBLE_PREDICTIONS_CSV,
+                    ],
+                    "reports": [report_dir / "evaluate_digital_twin_summary.json"],
+                },
+                {
+                    "id": "residual_analysis",
+                    "name": "Residual analysis",
+                    "primary": Config.RESIDUALS_CSV,
+                    "artifacts": [Config.RESIDUALS_CSV],
+                    "reports": [report_dir / "residual_validation_summary.json"],
+                },
+                {
+                    "id": "anomaly_detection",
+                    "name": "Anomaly detection",
+                    "primary": Config.ANOMALY_FUSION_CSV,
+                    "artifacts": [
+                        Config.RESIDUAL_ANOMALY_CSV,
+                        Config.IFOREST_CSV,
+                        Config.MAHALANOBIS_CSV,
+                        Config.ANOMALY_FUSION_CSV,
+                    ],
+                    "reports": [
+                        report_dir / "anomaly_fusion_summary.json",
+                        report_dir / "evaluate_anomaly_summary.json",
+                    ],
+                },
+                {
+                    "id": "health_monitoring",
+                    "name": "Health monitoring",
+                    "primary": Config.HEALTH_ALERTS_CSV,
+                    "artifacts": [
+                        Config.HEALTH_INDEX_CSV,
+                        Config.HEALTH_STATES_CSV,
+                        Config.HEALTH_TRENDS_CSV,
+                        Config.HEALTH_ALERTS_CSV,
+                    ],
+                    "reports": [
+                        Config.HEALTH_SCORE_ENGINE_SUMMARY_JSON,
+                        report_dir / "evaluate_health_summary.json",
+                    ],
+                },
+                {
+                    "id": "reasoning",
+                    "name": "Anomaly reasoning",
+                    "primary": Config.ROOT_CAUSE_CSV,
+                    "artifacts": [
+                        Config.ROOT_CAUSE_CSV,
+                        Config.ROOT_CAUSE_MEMORY_CSV,
+                        Config.TEMPORAL_REASONING_CSV,
+                        Config.SENSOR_DEPENDENCY_GRAPH_CSV,
+                    ],
+                    "reports": [
+                        Config.ROOT_CAUSE_SUMMARY_JSON,
+                        Config.TEMPORAL_REASONING_SUMMARY_JSON,
+                    ],
+                },
+                {
+                    "id": "explainability",
+                    "name": "Explainability",
+                    "primary": Config.EXPLANATION_REPORTS_CSV,
+                    "artifacts": [Config.SHAP_CSV, Config.EXPLANATION_REPORTS_CSV],
+                    "reports": [
+                        report_dir / "shap_summary.json",
+                        report_dir / "explanation_reports_summary.json",
+                    ],
+                },
+                {
+                    "id": "uncertainty",
+                    "name": "Confidence and uncertainty",
+                    "primary": Config.CONFIDENCE_CSV,
+                    "artifacts": [Config.MODEL_AGREEMENT_CSV, Config.CONFIDENCE_CSV],
+                    "reports": [
+                        report_dir / "model_agreement_summary.json",
+                        report_dir / "confidence_scores_summary.json",
+                    ],
+                },
+                {
+                    "id": "feedback_learning",
+                    "name": "Feedback learning",
+                    "primary": Config.FEEDBACK_UPDATES_CSV,
+                    "artifacts": [
+                        Config.FEEDBACK_UPDATES_CSV,
+                        Config.ALERT_MEMORY_CSV,
+                        Config.ADAPTIVE_THRESHOLDS_PATH,
+                    ],
+                    "reports": [
+                        report_dir / "learning_updater_summary.json",
+                        report_dir / "alert_memory_summary.json",
+                    ],
+                },
+                {
+                    "id": "dashboard",
+                    "name": "Dashboard data",
+                    "primary": Config.DASHBOARD_CSV,
+                    "artifacts": [Config.DASHBOARD_CSV],
+                    "reports": [self.summary_json],
+                },
+            ]
+
+            stage_results: List[Dict[str, object]] = []
+
+            for sequence, spec in enumerate(stages, start=1):
+                artifact_paths = [path for path in spec["artifacts"] if path.exists() and path.is_file()]
+                report_paths = [path for path in spec["reports"] if path.exists() and path.is_file()]
+
+                source_entries = [self._file_metadata(path) for path in artifact_paths]
+                source_entries.extend(self._file_metadata(path) for path in report_paths)
+                source_entries.sort(key=lambda item: str(item["updated_at"]), reverse=True)
+
+                newest_report: Optional[Path] = None
+                if report_paths:
+                    newest_report = max(report_paths, key=lambda path: path.stat().st_mtime)
+
+                report_content: Optional[Any] = None
+                if newest_report is not None:
+                    report_content, _ = self._read_json_artifact(newest_report)
+
+                report_status = (
+                    str(report_content.get("status", "")).lower()
+                    if isinstance(report_content, dict)
+                    else ""
+                )
+
+                primary_exists = bool(spec["primary"].exists() and spec["primary"].is_file())
+                if report_status in {"failed", "failure", "partial_failure", "error"}:
+                    status = "failed"
+                    status_source = f"report:{newest_report.name}" if newest_report else "report"
+                elif report_status in {"success", "completed", "complete"}:
+                    status = "success"
+                    status_source = f"report:{newest_report.name}" if newest_report else "report"
+                elif primary_exists:
+                    status = "success"
+                    status_source = f"artifact:{spec['primary'].name}"
+                else:
+                    status = "not_run"
+                    status_source = "no_artifact"
+
+                records_count: Optional[int] = None
+                duration_seconds: Optional[float] = None
+                message: Optional[str] = None
+                if isinstance(report_content, dict):
+                    if report_content.get("records_count") is not None:
+                        try:
+                            records_count = int(report_content["records_count"])
+                        except (TypeError, ValueError):
+                            records_count = None
+                    if report_content.get("duration_seconds") is not None:
+                        try:
+                            duration_seconds = float(report_content["duration_seconds"])
+                        except (TypeError, ValueError):
+                            duration_seconds = None
+                    if report_content.get("message") is not None:
+                        message = str(report_content["message"])
+
+                result: Dict[str, object] = {
+                    "sequence": sequence,
+                    "id": spec["id"],
+                    "name": spec["name"],
+                    "status": status,
+                    "status_source": status_source,
+                    "primary_output": spec["primary"].name,
+                    "primary_output_exists": primary_exists,
+                    "last_updated_at": source_entries[0]["updated_at"] if source_entries else None,
+                    "sources": source_entries,
+                }
+                if records_count is not None:
+                    result["records_count"] = records_count
+                if duration_seconds is not None:
+                    result["duration_seconds"] = duration_seconds
+                if message is not None:
+                    result["message"] = message
+
+                stage_results.append(result)
+
+            success_count = sum(stage["status"] == "success" for stage in stage_results)
+            failed_count = sum(stage["status"] == "failed" for stage in stage_results)
+            not_run_count = sum(stage["status"] == "not_run" for stage in stage_results)
+
+            overall_status = (
+                "failed"
+                if failed_count > 0
+                else "success"
+                if success_count == len(stage_results)
+                else "partial"
+                if success_count > 0
+                else "not_run"
+            )
+
+            return {
+                "status": "success",
+                "message": "Pipeline artifact status returned.",
+                "records_count": int(len(stage_results)),
+                "data": {
+                    "overall_status": overall_status,
+                    "success_count": int(success_count),
+                    "failed_count": int(failed_count),
+                    "not_run_count": int(not_run_count),
+                    "stages": stage_results,
+                },
+            }
+
+        except Exception as exc:
+            logger.exception("Pipeline status query failed.")
+            return self._failed_response(str(exc), data={"stages": []}, records_count=0)
+
+    def feedback_history(self, limit: int = 500) -> Dict[str, object]:
+        """Return the newest persisted operator feedback rows, bounded by limit."""
+        print("[PROGRESS] Entering DashboardService.feedback_history")
+
+        try:
+            safe_limit = max(1, min(int(limit), self.max_records))
+            feedback_path = Config.FEEDBACK_UPDATES_CSV
+            rows: Deque[Dict[str, object]] = deque(maxlen=safe_limit)
+            total_records = 0
+
+            if feedback_path.exists() and feedback_path.is_file():
+                for chunk in pd.read_csv(
+                    feedback_path,
+                    chunksize=min(self.chunk_size, 25_000),
+                    low_memory=False,
+                ):
+                    total_records += int(len(chunk))
+                    for record in self._records_from_df(chunk):
+                        rows.append(record)
+                    del chunk
+                    gc.collect()
+
+            feedback_records = list(rows)
+            if feedback_records and "timestamp_utc" in feedback_records[0]:
+                feedback_records.sort(
+                    key=lambda record: str(record.get("timestamp_utc") or ""),
+                    reverse=True,
+                )
+
+            recent_alerts: List[Dict[str, object]] = []
+            alert_path = Config.ALERT_MEMORY_CSV
+            if alert_path.exists() and alert_path.is_file():
+                requested_alert_columns = [
+                    "unit_id",
+                    "cycle",
+                    "split",
+                    "context_id",
+                    "alert_level",
+                    "final_anomaly_score",
+                    "root_cause_pattern",
+                    "top_sensor_1",
+                    "top_sensor_2",
+                    "top_sensor_3",
+                    "feedback_status",
+                ]
+                available_alert_columns = list(pd.read_csv(alert_path, nrows=0).columns)
+                usecols = [
+                    column
+                    for column in requested_alert_columns
+                    if column in available_alert_columns
+                ]
+                if usecols:
+                    alert_sample = pd.read_csv(
+                        alert_path,
+                        usecols=usecols,
+                        nrows=min(100, safe_limit),
+                        low_memory=False,
+                    )
+                    recent_alerts = self._records_from_df(alert_sample)
+
+            return {
+                "status": "success",
+                "message": "Feedback history returned.",
+                "records_count": int(len(feedback_records)),
+                "total_matching_records": int(total_records),
+                "truncated": bool(total_records > len(feedback_records)),
+                "max_records": int(safe_limit),
+                "data": {
+                    "feedback": feedback_records,
+                    "feedback_total_records": int(total_records),
+                    "feedback_truncated": bool(total_records > len(feedback_records)),
+                    "feedback_limit": int(safe_limit),
+                    "recent_alerts": recent_alerts,
+                    "recent_alerts_sampling": "first_rows_in_persisted_alert_memory",
+                },
+            }
+
+        except pd.errors.EmptyDataError:
+            return {
+                "status": "success",
+                "message": "Feedback history is empty.",
+                "records_count": 0,
+                "data": {"feedback": [], "recent_alerts": []},
+            }
+        except Exception as exc:
+            logger.exception("Feedback history query failed.")
+            return self._failed_response(
+                str(exc),
+                data={"feedback": [], "recent_alerts": []},
+                records_count=0,
+            )
+
+    def adaptive_thresholds(self) -> Dict[str, object]:
+        """Return the persisted adaptive threshold configuration."""
+        print("[PROGRESS] Entering DashboardService.adaptive_thresholds")
+
+        try:
+            path = Config.ADAPTIVE_THRESHOLDS_PATH
+            if not path.exists() or not path.is_file():
+                return {
+                    "status": "not_found",
+                    "message": "No adaptive threshold artifact is available.",
+                    "data": None,
+                }
+
+            content, content_error = self._read_json_artifact(path)
+            if content_error is not None:
+                return self._failed_response(
+                    f"Adaptive threshold artifact could not be loaded: {content_error}",
+                    data=None,
+                )
+
+            return {
+                "status": "success",
+                "message": "Adaptive thresholds returned.",
+                "data": {
+                    "metadata": self._file_metadata(path),
+                    "content": content,
+                },
+            }
+
+        except Exception as exc:
+            logger.exception("Adaptive threshold query failed.")
+            return self._failed_response(str(exc), data=None)
+
+    def reasoning_summary(self) -> Dict[str, object]:
+        """Return bounded aggregate reasoning reports that currently exist."""
+        print("[PROGRESS] Entering DashboardService.reasoning_summary")
+
+        try:
+            report_paths = [
+                Config.ROOT_CAUSE_SUMMARY_JSON,
+                Config.ROOT_CAUSE_MEMORY_SUMMARY_JSON,
+                Config.TEMPORAL_REASONING_SUMMARY_JSON,
+                Config.SENSOR_DEPENDENCY_GRAPH_SUMMARY_JSON,
+            ]
+            reports = [
+                self._report_entry(path, include_content=True)
+                for path in report_paths
+                if path.exists() and path.is_file()
+            ]
+
+            if not reports:
+                return {
+                    "status": "not_found",
+                    "message": "No reasoning summary reports are available.",
+                    "records_count": 0,
+                    "data": {"reports": []},
+                }
+
+            return {
+                "status": "success",
+                "message": "Reasoning summary reports returned.",
+                "records_count": int(len(reports)),
+                "data": {"reports": reports},
+            }
+
+        except Exception as exc:
+            logger.exception("Reasoning summary query failed.")
+            return self._failed_response(str(exc), data={"reports": []}, records_count=0)
+
+    def explainability_summary(self) -> Dict[str, object]:
+        """Return real, bounded SHAP rows and explainability report summaries."""
+        print("[PROGRESS] Entering DashboardService.explainability_summary")
+
+        try:
+            report_paths = [
+                Config.REPORT_DIR / "shap_summary.json",
+                Config.REPORT_DIR / "subsystem_explanations_summary.json",
+                Config.REPORT_DIR / "sensor_residual_ranking_summary.json",
+                Config.REPORT_DIR / "explanation_reports_summary.json",
+            ]
+            reports = [
+                self._report_entry(path, include_content=True)
+                for path in report_paths
+                if path.exists() and path.is_file()
+            ]
+
+            shap_rows: List[Dict[str, object]] = []
+            shap_metadata: Optional[Dict[str, object]] = None
+            shap_rows_truncated = False
+            if Config.SHAP_CSV.exists() and Config.SHAP_CSV.is_file():
+                shap_metadata = self._file_metadata(Config.SHAP_CSV)
+                shap_limit = min(500, self.max_records)
+                try:
+                    shap_df = pd.read_csv(
+                        Config.SHAP_CSV,
+                        nrows=shap_limit + 1,
+                        low_memory=False,
+                    )
+                    shap_rows_truncated = bool(len(shap_df) > shap_limit)
+                    shap_rows = self._records_from_df(shap_df.head(shap_limit))
+                except pd.errors.EmptyDataError:
+                    shap_rows = []
+
+            if not reports and not shap_rows:
+                return {
+                    "status": "not_found",
+                    "message": "No explainability artifacts are available.",
+                    "records_count": 0,
+                    "data": {"reports": [], "shap_rows": []},
+                }
+
+            return {
+                "status": "success",
+                "message": "Explainability summary returned.",
+                "records_count": int(len(shap_rows)),
+                "data": {
+                    "reports": reports,
+                    "shap_rows": shap_rows,
+                    "shap_file": shap_metadata,
+                    "shap_rows_truncated": shap_rows_truncated,
+                },
+            }
+
+        except Exception as exc:
+            logger.exception("Explainability summary query failed.")
+            return self._failed_response(
+                str(exc),
+                data={"reports": [], "shap_rows": []},
+                records_count=0,
+            )
+
+    def analytics_summary(self) -> Dict[str, object]:
+        """
+        Return lightweight analytics from existing JSON summaries only.
+
+        The full dashboard and analysis CSV files are intentionally not scanned.
+        Distributions, split statistics, min/max values, and averages are
+        returned exactly when their source report contains them.
+        """
+        print("[PROGRESS] Entering DashboardService.analytics_summary")
+
+        try:
+            report_paths = [
+                self.summary_json,
+                Config.REPORT_DIR / "evaluate_anomaly_summary.json",
+                Config.REPORT_DIR / "evaluate_health_summary.json",
+                Config.REPORT_DIR / "evaluate_digital_twin_summary.json",
+                Config.ROOT_CAUSE_SUMMARY_JSON,
+                Config.TEMPORAL_REASONING_SUMMARY_JSON,
+                Config.REPORT_DIR / "confidence_scores_summary.json",
+                Config.REPORT_DIR / "model_agreement_summary.json",
+                Config.REPORT_DIR / "shap_summary.json",
+            ]
+
+            summaries: Dict[str, object] = {}
+            sources: List[Dict[str, object]] = []
+            for path in report_paths:
+                if not path.exists() or not path.is_file():
+                    continue
+
+                content, content_error = self._read_json_artifact(path)
+                if content_error is not None:
+                    continue
+
+                summaries[path.stem] = content
+                sources.append(self._file_metadata(path))
+
+            if not summaries:
+                return {
+                    "status": "not_found",
+                    "message": "No analytics summary reports are available.",
+                    "records_count": 0,
+                    "data": {"summaries": {}, "sources": []},
+                }
+
+            return {
+                "status": "success",
+                "message": "Analytics summaries returned from report artifacts.",
+                "records_count": int(len(summaries)),
+                "data": {
+                    "summaries": summaries,
+                    "sources": sources,
+                },
+            }
+
+        except Exception as exc:
+            logger.exception("Analytics summary query failed.")
+            return self._failed_response(
+                str(exc),
+                data={"summaries": {}, "sources": []},
+                records_count=0,
+            )
 
 
 def run_dashboard_service_self_check() -> Dict[str, object]:
