@@ -44,7 +44,7 @@ import os
 import shutil
 import sys
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, Query, UploadFile
 
 
 # ======================================================================================
@@ -110,14 +110,22 @@ def _api_response_from_dict(result: Dict[str, Any]) -> APIResponse:
     }
 
     data = result.get("data")
+    extra_data = {
+        key: value
+        for key, value in result.items()
+        if key not in standard_keys and value is not None
+    }
 
     if data is None:
-        extra_data = {
-            key: value
-            for key, value in result.items()
-            if key not in standard_keys and value is not None
-        }
         data = extra_data if extra_data else None
+
+    metrics = (
+        dict(result["metrics"])
+        if isinstance(result.get("metrics"), dict)
+        else {}
+    )
+    if data is not None:
+        metrics.update(extra_data)
 
     return APIResponse(
         status=str(result.get("status", "success")),
@@ -132,7 +140,7 @@ def _api_response_from_dict(result: Dict[str, Any]) -> APIResponse:
             if result.get("records_count") is not None
             else None
         ),
-        metrics=result.get("metrics") if isinstance(result.get("metrics"), dict) else None,
+        metrics=metrics or None,
         errors=result.get("errors") if isinstance(result.get("errors"), list) else None,
         data=data,
     )
@@ -1045,6 +1053,163 @@ def dashboard_confidence(request: UnitRequest) -> APIResponse:
 
     except Exception as exc:
         return _failed_response("Dashboard confidence query failed", exc)
+
+
+@router.get("/dashboard/reports", response_model=APIResponse)
+def dashboard_reports() -> APIResponse:
+    """Return parsed JSON reports and metadata for generated artifacts."""
+    print("[PROGRESS] Entering Routes.py::dashboard_reports")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_reports()
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard reports query failed", exc)
+
+
+@router.get("/dashboard/overview", response_model=APIResponse)
+def dashboard_overview() -> APIResponse:
+    """Return fast dashboard aggregates from the generated summary report."""
+    print("[PROGRESS] Entering Routes.py::dashboard_overview")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_overview()
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard overview query failed", exc)
+
+
+@router.get("/dashboard/anomalies-all", response_model=APIResponse)
+def dashboard_anomalies_all(
+    limit: int = Query(default=500, ge=1, le=5000),
+) -> APIResponse:
+    """Return a bounded fleet-wide sample of persisted alert records."""
+    print("[PROGRESS] Entering Routes.py::dashboard_anomalies_all")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_all_anomalies(limit=limit)
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Fleet-wide dashboard anomalies query failed", exc)
+
+
+@router.get("/dashboard/pipeline-status", response_model=APIResponse)
+def dashboard_pipeline_status() -> APIResponse:
+    """Return pipeline stage status derived from generated artifacts."""
+    print("[PROGRESS] Entering Routes.py::dashboard_pipeline_status")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_pipeline_status()
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard pipeline status query failed", exc)
+
+
+@router.get("/dashboard/feedback-history", response_model=APIResponse)
+def dashboard_feedback_history(
+    limit: int = Query(default=500, ge=1, le=5000),
+) -> APIResponse:
+    """Return bounded operator feedback and an alert-memory sample."""
+    print("[PROGRESS] Entering Routes.py::dashboard_feedback_history")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_feedback_history(limit=limit)
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard feedback history query failed", exc)
+
+
+@router.get("/dashboard/adaptive-thresholds", response_model=APIResponse)
+def dashboard_adaptive_thresholds() -> APIResponse:
+    """Return the persisted adaptive threshold configuration."""
+    print("[PROGRESS] Entering Routes.py::dashboard_adaptive_thresholds")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_adaptive_thresholds()
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard adaptive thresholds query failed", exc)
+
+
+@router.get("/dashboard/reasoning-summary", response_model=APIResponse)
+def dashboard_reasoning_summary() -> APIResponse:
+    """Return aggregate reasoning summaries from generated reports."""
+    print("[PROGRESS] Entering Routes.py::dashboard_reasoning_summary")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_reasoning_summary()
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard reasoning summary query failed", exc)
+
+
+@router.get("/dashboard/explainability-summary", response_model=APIResponse)
+def dashboard_explainability_summary() -> APIResponse:
+    """Return bounded SHAP data and explainability summaries."""
+    print("[PROGRESS] Entering Routes.py::dashboard_explainability_summary")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_explainability_summary()
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard explainability summary query failed", exc)
+
+
+@router.get("/dashboard/analytics", response_model=APIResponse)
+def dashboard_analytics() -> APIResponse:
+    """Return lightweight analytics from existing JSON reports."""
+    print("[PROGRESS] Entering Routes.py::dashboard_analytics")
+
+    try:
+        module = importlib.import_module(
+            "app.services.Anomaly_Health_Monitering.dashboard.dashboard_api"
+        )
+        dashboard_api_class = getattr(module, "DashboardAPI")
+        result = dashboard_api_class().get_analytics()
+        return _api_response_from_dict(result)
+
+    except Exception as exc:
+        return _failed_response("Dashboard analytics query failed", exc)
 
 
 # ======================================================================================
