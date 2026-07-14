@@ -2,33 +2,55 @@
 Dashboard API service wrapper for CA-EDT-AHMA.
 
 Role:
-Provide function-level API helpers that are used by FastAPI routes.
+Provide function-level API helpers used by FastAPI routes.
 
 This file does not define FastAPI routes directly.
 Routes are defined in:
 
 app/routers/Anomaly_Health_Monitering/Routes.py
+
+Important:
+- This wrapper does not train models.
+- This wrapper does not predict RUL.
+- This wrapper does not use Y_dev/Y_test.
+- This wrapper does not make maintenance decisions.
+- Heavy dashboard services are initialized lazily only when needed.
 """
 
 from __future__ import annotations
 
-print("[PROGRESS] Loaded Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py")
-from typing import Dict
+print(
+    "[PROGRESS] Loaded Backend/app/services/Anomaly_Health_Monitering/"
+    "dashboard/dashboard_api.py"
+)
 
-import os as _os
-import sys as _sys
+from typing import Dict, Optional
+import os
+import sys
+
+
+# ======================================================================================
+# Standalone script support
+# ======================================================================================
 
 if __package__ in {None, ""}:
-    _backend_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), '..', '..', '..', '..'))
-    if _backend_root not in _sys.path:
-        _sys.path.append(_backend_root)
+    BACKEND_ROOT = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+    )
+
+    if BACKEND_ROOT not in sys.path:
+        sys.path.append(BACKEND_ROOT)
+
 
 from app.config.Anomaly_Health_Monitering.config import Config
 from app.services.Anomaly_Health_Monitering.dashboard.dashboard_data_generator import (
     DashboardDataGenerator,
 )
-from app.services.Anomaly_Health_Monitering.dashboard.dashboard_service import DashboardService
+from app.services.Anomaly_Health_Monitering.dashboard.dashboard_service import (
+    DashboardService,
+)
 from app.utils.Anomaly_Health_Monitering.logging_utils import get_logger
+
 
 logger = get_logger(__name__)
 
@@ -36,16 +58,73 @@ logger = get_logger(__name__)
 class DashboardAPI:
     """
     Dashboard API wrapper service.
+
+    This class is intentionally lightweight. It lazily initializes the dashboard
+    generator and dashboard service only when those methods are called.
     """
 
     def __init__(self) -> None:
         """
         Initialize dashboard API wrapper.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::__init__")
+        print("[PROGRESS] Entering DashboardAPI.__init__")
+
         Config.create_directories()
-        self.generator = DashboardDataGenerator()
-        self.service = DashboardService()
+
+        self.generator: Optional[DashboardDataGenerator] = None
+        self.service: Optional[DashboardService] = None
+
+    # ==================================================================================
+    # Lazy service access
+    # ==================================================================================
+
+    def _get_generator(self) -> DashboardDataGenerator:
+        """
+        Lazily initialize dashboard data generator.
+
+        Returns:
+            DashboardDataGenerator: Dashboard generator instance.
+        """
+        print("[PROGRESS] Entering DashboardAPI._get_generator")
+
+        if self.generator is None:
+            self.generator = DashboardDataGenerator()
+
+        return self.generator
+
+    def _get_service(self) -> DashboardService:
+        """
+        Lazily initialize dashboard service.
+
+        Returns:
+            DashboardService: Dashboard service instance.
+        """
+        print("[PROGRESS] Entering DashboardAPI._get_service")
+
+        if self.service is None:
+            self.service = DashboardService()
+
+        return self.service
+
+    def _failed_response(self, message: str) -> Dict[str, object]:
+        """
+        Build a consistent failure response.
+
+        Args:
+            message: Error message.
+
+        Returns:
+            Dict[str, object]: Standard failed response.
+        """
+        return {
+            "status": "failed",
+            "message": message,
+            "errors": [message],
+        }
+
+    # ==================================================================================
+    # Dashboard generation
+    # ==================================================================================
 
     def generate_dashboard(self) -> Dict[str, object]:
         """
@@ -54,36 +133,34 @@ class DashboardAPI:
         Returns:
             Dict[str, object]: Generation response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::generate_dashboard")
+        print("[PROGRESS] Entering DashboardAPI.generate_dashboard")
+
         try:
-            return self.generator.run()
+            return self._get_generator().run()
 
         except Exception as exc:
             logger.exception("Dashboard generation API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
+
+    # ==================================================================================
+    # Dashboard query helpers
+    # ==================================================================================
 
     def get_summary(self) -> Dict[str, object]:
         """
-        Get dashboard summary.
+        Get dashboard summary counts.
 
         Returns:
             Dict[str, object]: Summary response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::get_summary")
+        print("[PROGRESS] Entering DashboardAPI.get_summary")
+
         try:
-            return self.service.summary_counts()
+            return self._get_service().summary_counts()
 
         except Exception as exc:
             logger.exception("Dashboard summary API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
 
     def get_latest_unit_health(self, unit_id: int) -> Dict[str, object]:
         """
@@ -95,17 +172,14 @@ class DashboardAPI:
         Returns:
             Dict[str, object]: Latest unit health response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::get_latest_unit_health")
+        print("[PROGRESS] Entering DashboardAPI.get_latest_unit_health")
+
         try:
-            return self.service.latest_unit_health(unit_id)
+            return self._get_service().latest_unit_health(unit_id)
 
         except Exception as exc:
             logger.exception("Latest unit health API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
 
     def get_latest_all_units(self) -> Dict[str, object]:
         """
@@ -114,21 +188,18 @@ class DashboardAPI:
         Returns:
             Dict[str, object]: Latest all units response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::get_latest_all_units")
+        print("[PROGRESS] Entering DashboardAPI.get_latest_all_units")
+
         try:
-            return self.service.latest_all_units()
+            return self._get_service().latest_all_units()
 
         except Exception as exc:
             logger.exception("Latest all units API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
 
     def get_health_trend(self, unit_id: int) -> Dict[str, object]:
         """
-        Get health trend for a unit.
+        Get health trend for one unit.
 
         Args:
             unit_id: Unit id.
@@ -136,21 +207,18 @@ class DashboardAPI:
         Returns:
             Dict[str, object]: Health trend response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::get_health_trend")
+        print("[PROGRESS] Entering DashboardAPI.get_health_trend")
+
         try:
-            return self.service.health_trend_by_unit(unit_id)
+            return self._get_service().health_trend_by_unit(unit_id)
 
         except Exception as exc:
             logger.exception("Health trend API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
 
     def get_anomalies(self, unit_id: int) -> Dict[str, object]:
         """
-        Get anomalies for a unit.
+        Get anomaly records for one unit.
 
         Args:
             unit_id: Unit id.
@@ -158,21 +226,18 @@ class DashboardAPI:
         Returns:
             Dict[str, object]: Anomalies response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::get_anomalies")
+        print("[PROGRESS] Entering DashboardAPI.get_anomalies")
+
         try:
-            return self.service.anomalies_by_unit(unit_id)
+            return self._get_service().anomalies_by_unit(unit_id)
 
         except Exception as exc:
             logger.exception("Anomalies API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
 
     def get_explanation(self, unit_id: int, cycle: int) -> Dict[str, object]:
         """
-        Get explanation for unit and cycle.
+        Get explanation for one unit and cycle.
 
         Args:
             unit_id: Unit id.
@@ -181,39 +246,33 @@ class DashboardAPI:
         Returns:
             Dict[str, object]: Explanation response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::get_explanation")
+        print("[PROGRESS] Entering DashboardAPI.get_explanation")
+
         try:
-            return self.service.root_cause_explanation(unit_id, cycle)
+            return self._get_service().root_cause_explanation(unit_id, cycle)
 
         except Exception as exc:
             logger.exception("Explanation API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
 
     def get_confidence_uncertainty(self, unit_id: int) -> Dict[str, object]:
         """
-        Get confidence and uncertainty for a unit.
+        Get confidence and uncertainty records for one unit.
 
         Args:
             unit_id: Unit id.
 
         Returns:
-            Dict[str, object]: Confidence response.
+            Dict[str, object]: Confidence and uncertainty response.
         """
-        print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::get_confidence_uncertainty")
+        print("[PROGRESS] Entering DashboardAPI.get_confidence_uncertainty")
+
         try:
-            return self.service.confidence_uncertainty_by_unit(unit_id)
+            return self._get_service().confidence_uncertainty_by_unit(unit_id)
 
         except Exception as exc:
             logger.exception("Confidence API wrapper failed.")
-            return {
-                "status": "failed",
-                "message": str(exc),
-                "errors": [str(exc)],
-            }
+            return self._failed_response(str(exc))
 
 
 def run_dashboard_api_self_check() -> Dict[str, object]:
@@ -223,11 +282,14 @@ def run_dashboard_api_self_check() -> Dict[str, object]:
     Returns:
         Dict[str, object]: Self-check response.
     """
-    print("[PROGRESS] Entering Backend/app/services/Anomaly_Health_Monitering/dashboard/dashboard_api.py::run_dashboard_api_self_check")
+    print("[PROGRESS] Entering run_dashboard_api_self_check")
+
     api = DashboardAPI()
     return api.get_summary()
 
 
 if __name__ == "__main__":
+    print("[PROGRESS] dashboard_api.py execution started")
     result = run_dashboard_api_self_check()
+    print("[PROGRESS] dashboard_api.py execution finished")
     print(result)
